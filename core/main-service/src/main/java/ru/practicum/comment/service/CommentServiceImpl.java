@@ -40,7 +40,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     public CommentDto addComment(Long userId, Long eventId, NewCommentDto dto) {
-        User user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден."));
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие с id " + eventId + " не найдено."));
@@ -49,12 +49,10 @@ public class CommentServiceImpl implements CommentService {
             throw new BadRequestException("Нельзя комментировать неопубликованное событие.");
         }
 
-        if (dto.getText() == null || dto.getText().isBlank()) {
-            throw new BadRequestException("Текст комментария не может быть пустым.");
-        }
-
-        Comment comment = CommentMapper.returnComment(dto, user, event);
-        return CommentMapper.returnCommentDto(commentRepository.save(comment));
+        Comment comment = CommentMapper.returnComment(dto, userId, eventId);
+        Comment saved = commentRepository.save(comment);
+        String authorName = userRepository.findById(userId).get().getName();
+        return CommentMapper.returnCommentDto(saved, authorName);
     }
 
     @Override
@@ -63,18 +61,16 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Комментарий с id " + commentId + " не найден."));
 
-        if (!comment.getAuthor().getId().equals(userId)) {
+        if (!comment.getAuthorId().equals(userId)) {
             throw new ConflictException("Редактировать можно только свой комментарий.");
-        }
-
-        if (dto.getText() == null || dto.getText().isBlank()) {
-            throw new BadRequestException("Текст комментария не может быть пустым.");
         }
 
         comment.setText(dto.getText());
         comment.setStatus(CommentStatus.PENDING);
 
-        return CommentMapper.returnCommentDto(commentRepository.save(comment));
+        Comment saved = commentRepository.save(comment);
+        String authorName = userRepository.findById(userId).get().getName();
+        return CommentMapper.returnCommentDto(saved, authorName);
     }
 
     @Override
@@ -82,10 +78,9 @@ public class CommentServiceImpl implements CommentService {
     public void deletePrivateComment(Long userId, Long commentId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Комментарий с id " + commentId + " не найден."));
-        if (!comment.getAuthor().getId().equals(userId)) {
+        if (!comment.getAuthorId().equals(userId)) {
             throw new ConflictException("Удалить можно только свой комментарий.");
         }
-
         commentRepository.delete(comment);
     }
 
@@ -95,15 +90,17 @@ public class CommentServiceImpl implements CommentService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден."));
 
-        LocalDateTime start = parseDate(rangeStart);
-        LocalDateTime end = parseDate(rangeEnd);
-        validateDateRange(start, end);
-
         PageRequest pageable = PageRequest.of(from / size, size);
         List<Comment> comments = commentRepository.findAllByAuthorId(userId, pageable);
 
         return comments.stream()
-                .map(this::toCommentShortDto)
+                .map(comment -> {
+                    String userName = userRepository.findById(comment.getAuthorId()).get().getName();
+                    String eventTitle = eventRepository.findById(comment.getEventId())
+                            .map(Event::getTitle)
+                            .orElse("Unknown event");
+                    return CommentMapper.toCommentShortDto(comment, userName, eventTitle);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -113,16 +110,20 @@ public class CommentServiceImpl implements CommentService {
         eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие с id " + eventId + " не найдено."));
 
-        LocalDateTime start = parseDate(rangeStart);
-        LocalDateTime end = parseDate(rangeEnd);
-        validateDateRange(start, end);
-
         PageRequest pageable = PageRequest.of(from / size, size);
         List<Comment> comments = commentRepository.findAllByEventId(eventId, pageable);
 
         return comments.stream()
                 .filter(comment -> comment.getStatus() == CommentStatus.PUBLISHED)
-                .map(this::toCommentShortDto)
+                .map(comment -> {
+                    String userName = userRepository.findById(comment.getAuthorId())
+                            .map(User::getName)
+                            .orElse("User #" + comment.getAuthorId());
+                    String eventTitle = eventRepository.findById(comment.getEventId())
+                            .map(Event::getTitle)
+                            .orElse("Unknown event");
+                    return CommentMapper.toCommentShortDto(comment, userName, eventTitle);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -138,7 +139,12 @@ public class CommentServiceImpl implements CommentService {
         Page<Comment> page = commentRepository.searchAdmin(users, text, start, end, pageable);
 
         return page.getContent().stream()
-                .map(CommentMapper::returnCommentDto)
+                .map(comment -> {
+                    String authorName = userRepository.findById(comment.getAuthorId())
+                            .map(User::getName)
+                            .orElse("User #" + comment.getAuthorId());
+                    return CommentMapper.returnCommentDto(comment, authorName);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -149,9 +155,12 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new NotFoundException("Комментарий с id=" + commentId + " не найден"));
 
         CommentStatus newStatus = CommentStatus.valueOf(request.getStatus().toUpperCase());
-
         comment.setStatus(newStatus);
-        return CommentMapper.returnCommentDto(commentRepository.save(comment));
+        Comment saved = commentRepository.save(comment);
+        String authorName = userRepository.findById(comment.getAuthorId())
+                .map(User::getName)
+                .orElse("User #" + comment.getAuthorId());
+        return CommentMapper.returnCommentDto(saved, authorName);
     }
 
     @Override
@@ -161,15 +170,6 @@ public class CommentServiceImpl implements CommentService {
             throw new NotFoundException("Комментарий с id=" + commentId + " не найден");
         }
         commentRepository.deleteById(commentId);
-    }
-
-    private CommentShortDto toCommentShortDto(Comment comment) {
-        return CommentShortDto.builder()
-                .userName(comment.getAuthor().getName())
-                .eventTitle(comment.getEvent().getTitle())
-                .text(comment.getText())
-                .created(comment.getCreated())
-                .build();
     }
 
     private LocalDateTime parseDate(String dateStr) {

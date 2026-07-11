@@ -1,15 +1,12 @@
 package ru.practicum.comment.mapper;
 
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
 import org.springframework.stereotype.Component;
-import ru.practicum.comment.dto.*;
+import ru.practicum.comment.dto.CommentDto;
+import ru.practicum.comment.dto.CommentShortDto;
+import ru.practicum.comment.dto.NewCommentDto;
 import ru.practicum.comment.model.Comment;
 import ru.practicum.comment.model.CommentStatus;
-import ru.practicum.user.UserClient;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -24,7 +21,7 @@ public class CommentMapper {
                 .build();
     }
 
-    public static CommentDto returnCommentDto(Comment comment) {
+    public static CommentDto returnCommentDto(Comment comment, String authorName) {
         return CommentDto.builder()
                 .id(comment.getId())
                 .text(comment.getText())
@@ -35,11 +32,12 @@ public class CommentMapper {
                 .build();
     }
 
-    public static List<CommentDto> returnCommentDtoList(Iterable<Comment> comments) {
-        List<CommentDto> result = new ArrayList<>();
-        for (Comment comment : comments) {
-            result.add(returnCommentDto(comment));
-        }
-        return result;
+    public static CommentShortDto toCommentShortDto(Comment comment, String userName, String eventTitle) {
+        return CommentShortDto.builder()
+                .userName(userName)
+                .eventTitle(eventTitle)
+                .text(comment.getText())
+                .created(comment.getCreated())
+                .build();
     }
 }
