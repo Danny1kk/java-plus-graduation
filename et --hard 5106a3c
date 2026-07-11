@@ -1,0 +1,65 @@
+[33m5106a3c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mspring-cloud[m[33m, [m[1;31morigin/spring-cloud[m[33m, [m[1;32mrestore-from-commit[m[33m)[m HEAD@{0}: reset: moving to 5106a3c
+[33mec9a9c8[m[33m ([m[1;31morigin/feature[m[33m)[m HEAD@{1}: Branch: renamed refs/heads/feature to refs/heads/spring-cloud
+[33mec9a9c8[m[33m ([m[1;31morigin/feature[m[33m)[m HEAD@{3}: Branch: renamed refs/heads/spring-cloud-fixed to refs/heads/feature
+[33mec9a9c8[m[33m ([m[1;31morigin/feature[m[33m)[m HEAD@{5}: commit (merge): test
+[33m97ce2d7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{6}: reset: moving to origin/main
+[33m97ce2d7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{7}: reset: moving to origin/main
+[33mc79905a[m[33m ([m[1;32mspring-cloud-new[m[33m)[m HEAD@{8}: rebase (abort): returning to refs/heads/spring-cloud-fixed
+[33m97ce2d7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{9}: rebase (start): checkout origin/main
+[33mc79905a[m[33m ([m[1;32mspring-cloud-new[m[33m)[m HEAD@{10}: reset: moving to spring-cloud
+[33m170f253[m HEAD@{11}: commit (merge): fix: разрешили конфликты при слиянии, оставляем версию spring-cloud
+[33m97ce2d7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{12}: checkout: moving from main to spring-cloud-fixed
+[33m97ce2d7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{13}: checkout: moving from spring-cloud to main
+[33mc79905a[m[33m ([m[1;32mspring-cloud-new[m[33m)[m HEAD@{14}: checkout: moving from spring-cloud to spring-cloud
+[33mc79905a[m[33m ([m[1;32mspring-cloud-new[m[33m)[m HEAD@{15}: checkout: moving from spring-cloud-new to spring-cloud
+[33mc79905a[m[33m ([m[1;32mspring-cloud-new[m[33m)[m HEAD@{16}: Branch: renamed refs/heads/spring-cloud to refs/heads/spring-cloud-new
+[33mc79905a[m[33m ([m[1;32mspring-cloud-new[m[33m)[m HEAD@{18}: commit: fix: триггер для открытия PR
+[33m5106a3c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mspring-cloud[m[33m, [m[1;31morigin/spring-cloud[m[33m, [m[1;32mrestore-from-commit[m[33m)[m HEAD@{19}: reset: moving to origin/spring-cloud
+[33mf8786a9[m HEAD@{20}: checkout: moving from restore-from-commit to spring-cloud
+[33m5106a3c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mspring-cloud[m[33m, [m[1;31morigin/spring-cloud[m[33m, [m[1;32mrestore-from-commit[m[33m)[m HEAD@{21}: commit: trigger: перезапуск тестов гитхаба
+[33m9d101b1[m HEAD@{22}: checkout: moving from spring-cloud to restore-from-commit
+[33mf8786a9[m HEAD@{23}: commit: test
+[33m45b08cd[m HEAD@{24}: commit: test
+[33m9de9be9[m HEAD@{25}: commit: test
+[33m1a5e7ff[m HEAD@{26}: commit: test
+[33ma0c7ef2[m HEAD@{27}: commit: test
+[33m3e79799[m HEAD@{28}: commit: test
+[33m558c401[m HEAD@{29}: commit: test
+[33mf6163d6[m HEAD@{30}: commit: test
+[33m92e0ee3[m HEAD@{31}: commit: test
+[33md35b62d[m HEAD@{32}: commit: test
+[33m7712ebd[m HEAD@{33}: commit: test
+[33m8b12ba7[m HEAD@{34}: commit: test
+[33m5f9b36e[m HEAD@{35}: commit: test
+[33m67a79ad[m HEAD@{36}: commit: test
+[33m812a96e[m HEAD@{37}: commit: test
+[33m2a31d11[m HEAD@{38}: commit: test
+[33mb239c53[m HEAD@{39}: commit: test
+[33ma2c273b[m HEAD@{40}: commit: test
+[33m7c16b14[m HEAD@{41}: commit: test
+[33m8ce1c3c[m HEAD@{42}: commit: test
+[33m6d79a9c[m HEAD@{43}: commit: test
+[33ma32f21c[m HEAD@{44}: commit: test
+[33m0e35d5f[m HEAD@{45}: commit: test
+[33m5ca0c27[m HEAD@{46}: commit: fix: set main-service and stats-service ports to dynamic in config-repo
+[33maa710c0[m HEAD@{47}: commit: fix: successfully refactored StatsService to use Lombok getters
+[33m611200b[m HEAD@{48}: commit: fix: override config-server port to enforce 8081 for main-service
+[33ma36f925[m HEAD@{49}: commit: fix: adjust rangeEnd to plusYears(100) and secure getPublic views fallback
+[33mc9ca7d3[m HEAD@{50}: commit: build: fix cyclic dependency by removing stats-dto from root pom
+[33m9fca8c7[m HEAD@{51}: commit: fix: add default value for stats-server.url placeholder in client
+[33m20ce6ab[m HEAD@{52}: commit: refactor: sync main-service pom dependencies and clean up client modules
+[33ma7c1c03[m HEAD@{53}: commit: fix: secure getViewsMap parsing and direct mapping injection
+[33m2bd502e[m HEAD@{54}: commit: fix: resolve events unique views mapping and time sync issue
+[33m61f12bf[m HEAD@{55}: commit: fix: change count(id) to count(ip) in HitRepository queries
+[33m7ac5fd6[m HEAD@{56}: commit: build: remove stats-dto self-reference from root dependencyManagement
+[33m76cb435[m HEAD@{57}: commit: build: clean root pom and clear global dependencies
+[33md5597fa[m HEAD@{58}: commit: build: clean stats-server properties and align spring boot versions
+[33m5726440[m HEAD@{59}: commit: build: restore clean multi-module structure
+[33md9862b9[m HEAD@{60}: commit: build: move stats-dto to dependencyManagement in root pom
+[33mf7fe41f[m HEAD@{61}: commit: fix: integrate stats-server views counting with unique ip configuration
+[33md41c6b8[m HEAD@{62}: commit: fix: fix syntax error in schema.sql categories table definition
+[33m9586952[m HEAD@{63}: commit: build: fix stats-server Java version and remove main-service finalName
+[33mec9859d[m HEAD@{64}: commit: chore: add spring-cloud-dependencies BOM to root pom
+[33m2f48dc5[m HEAD@{65}: commit: test
+[33m05e1ac2[m HEAD@{66}: checkout: moving from main to spring-cloud
+[33m97ce2d7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{67}: clone: from https://github.com/Danny1kk/java-plus-graduation

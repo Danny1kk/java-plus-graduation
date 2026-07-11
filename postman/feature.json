@@ -1,0 +1,567 @@
+{
+  "info": {
+    "name": "EWM-Comments-Feature",
+    "description": "Коллекция для проверки feature комментариев. Запускать последовательно в Collection Runner при поднятом ewm-service на http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const runId = pm.collectionVariables.get('runId') || Date.now().toString();",
+          "pm.collectionVariables.set('runId', runId);",
+          "const pad = (value) => String(value).padStart(2, '0');",
+          "const future = new Date(Date.now() + 3 * 60 * 60 * 1000);",
+          "const futureEventDate = `${future.getFullYear()}-${pad(future.getMonth() + 1)}-${pad(future.getDate())} ${pad(future.getHours())}:${pad(future.getMinutes())}:${pad(future.getSeconds())}`;",
+          "pm.collectionVariables.set('futureEventDate', futureEventDate);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "missingEventId",
+      "value": "999999999"
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "futureEventDate",
+      "value": ""
+    },
+    {
+      "key": "authorUserId",
+      "value": ""
+    },
+    {
+      "key": "strangerUserId",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
+    },
+    {
+      "key": "commentId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Create author user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.id).to.be.a('number');",
+                  "pm.collectionVariables.set('authorUserId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Comments Author {{runId}}\",\n  \"email\": \"comments-author-{{runId}}@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users"
+          }
+        },
+        {
+          "name": "Create stranger user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.id).to.be.a('number');",
+                  "pm.collectionVariables.set('strangerUserId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Comments Stranger {{runId}}\",\n  \"email\": \"comments-stranger-{{runId}}@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/users"
+          }
+        },
+        {
+          "name": "Create category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.id).to.be.a('number');",
+                  "pm.collectionVariables.set('categoryId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Comments Category {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/categories"
+          }
+        },
+        {
+          "name": "Create event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.id).to.be.a('number');",
+                  "pm.expect(json.state).to.eql('PENDING');",
+                  "pm.collectionVariables.set('eventId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotation\": \"Annotation for comment feature flow {{runId}}.\",\n  \"category\": {{categoryId}},\n  \"description\": \"Description for comment feature flow {{runId}} with enough characters for validation.\",\n  \"eventDate\": \"{{futureEventDate}}\",\n  \"location\": {\n    \"lat\": 55.751244,\n    \"lon\": 37.618423\n  },\n  \"paid\": false,\n  \"participantLimit\": 0,\n  \"requestModeration\": true,\n  \"title\": \"Comments Event {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/users/{{authorUserId}}/events"
+          }
+        },
+        {
+          "name": "Publish event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.state).to.eql('PUBLISHED');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/events/{{eventId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Happy Path",
+      "item": [
+        {
+          "name": "Create comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const expectedText = `Happy path comment ${pm.collectionVariables.get('runId')}`;",
+                  "pm.expect(json.id).to.be.a('number');",
+                  "pm.expect(json.text).to.eql(expectedText);",
+                  "pm.expect(json.eventId).to.eql(Number(pm.collectionVariables.get('eventId')));",
+                  "pm.expect(json.status).to.eql('PENDING');",
+                  "pm.collectionVariables.set('commentId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Happy path comment {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments/{{eventId}}"
+          }
+        },
+        {
+          "name": "Publish comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.id).to.eql(Number(pm.collectionVariables.get('commentId')));",
+                  "pm.expect(json.status).to.eql('PUBLISHED');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/admin/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "Get comments by user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const expectedText = `Happy path comment ${pm.collectionVariables.get('runId')}`;",
+                  "pm.expect(Array.isArray(json)).to.eql(true);",
+                  "pm.expect(json.some((comment) => comment.text === expectedText)).to.eql(true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments"
+          }
+        },
+        {
+          "name": "Get public comments by event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const expectedText = `Happy path comment ${pm.collectionVariables.get('runId')}`;",
+                  "pm.expect(Array.isArray(json)).to.eql(true);",
+                  "pm.expect(json.some((comment) => comment.text === expectedText)).to.eql(true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/comments/{{eventId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Delete foreign comment should return 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('CONFLICT');",
+                  "pm.expect(json.reason).to.eql('Integrity constraint has been violated.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{strangerUserId}}/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "Create comment for missing event should return 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('NOT_FOUND');",
+                  "pm.expect(json.reason).to.eql('The required object was not found.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Comment for a missing event {{runId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments/{{missingEventId}}"
+          }
+        },
+        {
+          "name": "Get comments with invalid rangeStart should return 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('BAD_REQUEST');",
+                  "pm.expect(json.reason).to.eql('Incorrectly made request.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments?rangeStart=not-a-date"
+          }
+        },
+        {
+          "name": "Create blank comment should return 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.status).to.eql('BAD_REQUEST');",
+                  "pm.expect(json.reason).to.eql('Incorrectly made request.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments/{{eventId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete Flow",
+      "item": [
+        {
+          "name": "Delete own comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 204', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "Verify deleted comment is absent in user list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const expectedText = `Happy path comment ${pm.collectionVariables.get('runId')}`;",
+                  "pm.expect(Array.isArray(json)).to.eql(true);",
+                  "pm.expect(json.every((comment) => comment.text !== expectedText)).to.eql(true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{authorUserId}}/comments"
+          }
+        }
+      ]
+    }
+  ]
+}

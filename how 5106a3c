@@ -1,0 +1,37 @@
+[33mcommit f8786a9acaca81ca22a3b5184a618e3f4b702148[m
+Author: Danny <danny.koshik@gmail.com>
+Date:   Sun Jul 12 00:51:13 2026 +0300
+
+    test
+
+[1mdiff --git a/infra/gateway-server/src/main/resources/application.properties b/infra/gateway-server/src/main/resources/application.properties[m
+[1mindex a616434..0140b32 100644[m
+[1m--- a/infra/gateway-server/src/main/resources/application.properties[m
+[1m+++ b/infra/gateway-server/src/main/resources/application.properties[m
+[36m@@ -1,4 +1,26 @@[m
+[32m+[m[32m#spring.application.name=gateway-server[m
+[32m+[m[32m#spring.config.import=configserver:[m
+[32m+[m[32m#spring.cloud.config.fail-fast=true[m
+[32m+[m[32m#spring.cloud.config.retry.useRandomPolicy=true[m
+[32m+[m[32m#spring.cloud.config.retry.max-attempts=5[m
+[32m+[m[32m#spring.cloud.config.retry.initial=1000[m
+[32m+[m[32m#spring.cloud.config.retry.multiplier=2[m
+[32m+[m[32m#spring.cloud.config.retry.max-interval=6000[m
+[32m+[m[32m#spring.cloud.config.discovery.enabled=true[m
+[32m+[m[32m#spring.cloud.config.discovery.serviceId=config-server[m
+[32m+[m[32m#[m
+[32m+[m[32m#eureka.client.service-url.default-zone=http://localhost:8761/eureka[m
+[32m+[m[32m#[m
+[32m+[m[32m#eureka.instance.hostname=localhost[m
+[32m+[m[32m#eureka.instance.instance-id=${spring.application.name}:${random.value}[m
+[32m+[m[32m#eureka.instance.lease-renewal-interval-in-seconds=10[m
+[32m+[m
+ spring.application.name=gateway-server[m
+[32m+[m
+[32m+[m[32mserver.port=8000[m
+[32m+[m
+[32m+[m[32mspring.cloud.config.override-none=true[m
+[32m+[m
+ spring.config.import=configserver:[m
+ spring.cloud.config.fail-fast=true[m
+ spring.cloud.config.retry.useRandomPolicy=true[m
