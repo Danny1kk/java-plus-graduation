@@ -74,7 +74,7 @@ public class StatsClient {
             return Arrays.asList(Objects.requireNonNull(response.getBody()));
 
         } catch (Exception e) {
-            log.error("\"Ошибка при получении статистики: {}", e.getMessage());
+            log.error("Ошибка при получении статистики: start={}, end={}", start, end, e);
             return Collections.emptyList();
         }
     }
