@@ -1,5 +1,6 @@
 package ru.practicum.compilation.service;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class CompilationService {
     private final CompilationRepository compilationRepository;
     private final EventClient eventClient;
     private final CompilationMapper compilationMapper;
+    private final EntityManager entityManager;
 
     @Transactional
     public CompilationDto create(NewCompilationDto dto) {
@@ -56,6 +58,8 @@ public class CompilationService {
         }
 
         compilationRepository.saveAndFlush(compilation);
+
+        entityManager.clear();
 
         Compilation detailed = compilationRepository.findDetailedById(compId)
                 .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " was not found"));
