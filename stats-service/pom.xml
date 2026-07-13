@@ -19,6 +19,7 @@
         <module>client</module>
         <module>server</module>
     </modules>
+
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
