@@ -35,9 +35,8 @@ public class CompilationService {
         compilation.setEventIds(dto.getEvents() != null ? new LinkedHashSet<>(dto.getEvents()) : new LinkedHashSet<>());
 
         Compilation saved = compilationRepository.save(compilation);
-        Compilation detailed = compilationRepository.findDetailedById(saved.getId())
-                .orElseThrow(() -> new NotFoundException("Compilation with id=" + saved.getId() + " was not found"));
-        return compilationMapper.toDto(detailed);
+
+        return compilationMapper.toDto(saved);
     }
 
     @Transactional
@@ -55,10 +54,9 @@ public class CompilationService {
             compilation.setTitle(dto.getTitle());
         }
 
-        compilationRepository.save(compilation);
-        Compilation detailed = compilationRepository.findDetailedById(compilation.getId())
-                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compilation.getId() + " was not found"));
-        return compilationMapper.toDto(detailed);
+        Compilation saved = compilationRepository.saveAndFlush(compilation);
+
+        return compilationMapper.toDto(saved);
     }
 
     @Transactional
