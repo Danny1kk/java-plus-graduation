@@ -139,6 +139,7 @@ public class EventService {
     public List<EventShortDto> searchPublic(String text, List<Long> categories, Boolean paid,
                                             LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                             Boolean onlyAvailable, String sort, int from, int size) {
+
         Pageable pageable = PageRequest.of(from / size, size);
 
         if (rangeStart == null) rangeStart = LocalDateTime.now();
@@ -150,12 +151,13 @@ public class EventService {
 
         Page<Event> eventPage = eventRepository.searchPublic(text, categories, paid, rangeStart, rangeEnd, pageable);
         List<Event> events = eventPage.getContent();
-        enrichEventsWithViews(events);
+        Map<Long, Long> viewsMap = getViewsMap(events);
 
         return events.stream()
                 .map(event -> {
                     Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-                    return eventMapper.toShortDto(event, confirmed, event.getViews());
+                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    return eventMapper.toShortDto(event, confirmed, views);
                 })
                 .collect(Collectors.toList());
     }
@@ -168,9 +170,11 @@ public class EventService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        enrichEventsWithViews(List.of(event));
+        Map<Long, Long> viewsMap = getViewsMap(List.of(event));
+        Long views = viewsMap.getOrDefault(event.getId(), 0L);
+
         Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-        return eventMapper.toFullDto(event, confirmed, event.getViews());
+        return eventMapper.toFullDto(event, confirmed, views);
     }
 
     public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
@@ -181,11 +185,14 @@ public class EventService {
         if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
         if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
 
-        return eventRepository.searchAdmin(users, states, categories, rangeStart, rangeEnd, pageable)
-                .stream()
+        List<Event> events = eventRepository.searchAdmin(users, states, categories, rangeStart, rangeEnd, pageable).getContent();
+        Map<Long, Long> viewsMap = getViewsMap(events);
+
+        return events.stream()
                 .map(event -> {
                     Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-                    return eventMapper.toFullDto(event, confirmed, event.getViews());
+                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    return eventMapper.toFullDto(event, confirmed, views);
                 })
                 .collect(Collectors.toList());
     }
@@ -236,8 +243,8 @@ public class EventService {
         return eventMapper.toFullDto(saved, confirmed, saved.getViews());
     }
 
-    private void enrichEventsWithViews(List<Event> events) {
-        if (events.isEmpty()) return;
+    private Map<Long, Long> getViewsMap(List<Event> events) {
+        if (events.isEmpty()) return Map.of();
 
         List<String> uris = events.stream()
                 .map(event -> "/events/" + event.getId())
@@ -245,25 +252,24 @@ public class EventService {
 
         try {
             List<ViewStatsDto> stats = statsClient.getStats(
-                    LocalDateTime.now().minusYears(5),
+                    LocalDateTime.now().minusYears(10),
                     LocalDateTime.now().plusYears(1),
                     uris,
                     true
             );
 
-            Map<String, Long> viewsMap = stats.stream()
+            return stats.stream()
                     .collect(Collectors.toMap(
-                            ViewStatsDto::getUri,
+                            dto -> {
+                                String uri = dto.getUri();
+                                return Long.parseLong(uri.substring(uri.lastIndexOf("/") + 1));
+                            },
                             ViewStatsDto::getHits,
                             (a, b) -> a > b ? a : b
                     ));
-
-            events.forEach(event -> {
-                Long views = viewsMap.getOrDefault("/events/" + event.getId(), 0L);
-                event.setViews(views);
-            });
         } catch (Exception e) {
             System.err.println("Не удалось получить статистику просмотров: " + e.getMessage());
+            return Map.of();
         }
     }
 }

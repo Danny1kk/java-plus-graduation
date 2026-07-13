@@ -6,8 +6,6 @@ import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.EventShortDto;
 import ru.practicum.event.model.Event;
 import ru.practicum.user.dto.UserShortDto;
-import ru.practicum.user.UserClient;
-import ru.practicum.category.CategoryClient;
 
 @Component
 public class EventMapper {

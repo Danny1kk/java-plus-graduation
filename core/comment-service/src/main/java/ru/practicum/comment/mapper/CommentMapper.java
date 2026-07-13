@@ -1,14 +1,12 @@
 package ru.practicum.comment.mapper;
 
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
 import org.springframework.stereotype.Component;
 import ru.practicum.client.UserClient;
 import ru.practicum.comment.dto.CommentDto;
 import ru.practicum.comment.dto.NewCommentDto;
 import ru.practicum.comment.model.Comment;
 import ru.practicum.comment.model.CommentStatus;
-import ru.practicum.client.UserClient;
 
 import java.util.ArrayList;
 import java.util.List;
