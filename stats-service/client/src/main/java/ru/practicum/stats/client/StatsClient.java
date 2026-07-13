@@ -8,6 +8,8 @@ import org.springframework.web.client.RestTemplate;
 import ru.practicum.stats.dto.EndpointHitDto;
 import ru.practicum.stats.dto.ViewStatsDto;
 import org.springframework.web.util.UriComponentsBuilder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -50,20 +52,25 @@ public class StatsClient {
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
                                        List<String> uris, Boolean unique) {
         try {
+            String startEncoded = URLEncoder.encode(start.format(FORMATTER), StandardCharsets.UTF_8);
+            String endEncoded = URLEncoder.encode(end.format(FORMATTER), StandardCharsets.UTF_8);
+
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
-                    .queryParam("start", start.format(FORMATTER))
-                    .queryParam("end", end.format(FORMATTER));
+                    .queryParam("start", startEncoded)
+                    .queryParam("end", endEncoded);
 
             if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", String.join(",", uris));
+                builder.queryParam("uris", uris);
             }
 
             if (unique != null) {
                 builder.queryParam("unique", unique);
             }
 
+            String url = builder.build(false).toUriString();
+
             ResponseEntity<ViewStatsDto[]> response =
-                    restTemplate.getForEntity(builder.build().toUriString(), ViewStatsDto[].class);
+                    restTemplate.getForEntity(url, ViewStatsDto[].class);
 
             return Arrays.asList(Objects.requireNonNull(response.getBody()));
 
