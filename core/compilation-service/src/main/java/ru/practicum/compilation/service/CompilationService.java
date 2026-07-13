@@ -57,14 +57,9 @@ public class CompilationService {
             compilation.setEventIds(new LinkedHashSet<>(request.getEvents()));
         }
 
-        compilationRepository.saveAndFlush(compilation);
+        Compilation saved = compilationRepository.saveAndFlush(compilation);
 
-        entityManager.clear();
-
-        Compilation detailed = compilationRepository.findDetailedById(compId)
-                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " was not found"));
-
-        return compilationMapper.toDto(detailed);
+        return compilationMapper.toDto(saved);
     }
 
 //    @Transactional
