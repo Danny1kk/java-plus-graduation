@@ -63,6 +63,28 @@ public class CompilationService {
         return compilationMapper.toDto(detailed);
     }
 
+//    @Transactional
+//    public CompilationDto update(Long compId, UpdateCompilationRequest dto) {
+//        Compilation compilation = compilationRepository.findById(compId)
+//                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " was not found"));
+//
+//        if (dto.getEvents() != null) {
+//            compilation.setEventIds(new LinkedHashSet<>(dto.getEvents()));
+//        }
+//        if (dto.getPinned() != null) {
+//            compilation.setPinned(dto.getPinned());
+//        }
+//        if (dto.getTitle() != null) {
+//            compilation.setTitle(dto.getTitle());
+//        }
+//
+//        compilationRepository.save(compilation);
+//        Compilation detailed = compilationRepository.findDetailedById(compilation.getId())
+//                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compilation.getId() + " was not found"));
+//        return compilationMapper.toDto(detailed);
+//    }
+
+
     @Transactional
     public void delete(Long compId) {
         if (!compilationRepository.existsById(compId)) {
