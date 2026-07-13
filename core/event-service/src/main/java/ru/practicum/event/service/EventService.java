@@ -171,7 +171,7 @@ public class EventService {
         }
 
         Map<Long, Long> viewsMap = getViewsMap(List.of(event));
-        Long views = viewsMap.getOrDefault(event.getId(), 0L);
+        Long views = viewsMap.getOrDefault(event.getId(), 0L) + 1;
 
         Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
         return eventMapper.toFullDto(event, confirmed, views);
