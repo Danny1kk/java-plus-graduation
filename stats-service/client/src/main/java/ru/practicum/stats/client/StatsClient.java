@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.dto.StatsConstants;
 import ru.practicum.stats.dto.ViewStatsDto;
 import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URLEncoder;
@@ -24,9 +25,7 @@ public class StatsClient {
 
     private final RestTemplate restTemplate;
     private final DiscoveryClient discoveryClient;
-
-    private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(StatsConstants.DATE_TIME_PATTERN);
 
     public StatsClient(RestTemplate restTemplate, DiscoveryClient discoveryClient) {
         this.restTemplate = restTemplate;
@@ -45,7 +44,7 @@ public class StatsClient {
         try {
             restTemplate.postForEntity(getBaseUrl() + "/hit", hitDto, Object.class);
         } catch (Exception e) {
-            log.error("Не удалось отправить hit: app={}, uri={}", hitDto.app(), hitDto.uri(), e);
+            log.error("Ошибка при отправке hit: {}", e.getMessage());
         }
     }
 
@@ -60,7 +59,7 @@ public class StatsClient {
                     .queryParam("end", endEncoded);
 
             if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", uris);
+                builder.queryParam("uris", String.join(",", uris));
             }
 
             if (unique != null) {
@@ -75,7 +74,7 @@ public class StatsClient {
             return Arrays.asList(Objects.requireNonNull(response.getBody()));
 
         } catch (Exception e) {
-            log.error("Не удалось получить статистику просмотров", e);
+            log.error("\"Ошибка при получении статистики: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
