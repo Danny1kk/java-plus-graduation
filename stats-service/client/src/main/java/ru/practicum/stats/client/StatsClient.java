@@ -59,7 +59,7 @@ public class StatsClient {
                     .queryParam("end", endEncoded);
 
             if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", String.join(",", uris));
+                uris.forEach(uri -> builder.queryParam("uris", uri));
             }
 
             if (unique != null) {

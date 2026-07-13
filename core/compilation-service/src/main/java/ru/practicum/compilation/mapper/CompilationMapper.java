@@ -6,6 +6,7 @@ import ru.practicum.compilation.dto.CompilationDto;
 import ru.practicum.compilation.model.Compilation;
 import ru.practicum.client.EventClient;
 
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
@@ -21,6 +22,7 @@ public class CompilationMapper {
         dto.setTitle(compilation.getTitle());
         dto.setEvents(compilation.getEventIds().stream()
                 .map(eventClient::getEventShort)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
         return dto;
     }
