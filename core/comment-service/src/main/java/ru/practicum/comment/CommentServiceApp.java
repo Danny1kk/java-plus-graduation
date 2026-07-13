@@ -5,9 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@SpringBootApplication(scanBasePackages = {"ru.practicum.comment", "ru.practicum.event.client", "ru.practicum.user.client", "ru.practicum.exception"})
+@SpringBootApplication(scanBasePackages = {"ru.practicum.comment", "ru.practicum.client", "ru.practicum.client", "ru.practicum.exeption"})
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = {"ru.practicum.event.client", "ru.practicum.user.client"})
+@EnableFeignClients(basePackages = {"ru.practicum.client", "ru.practicum.client"})
 public class CommentServiceApp {
     public static void main(String[] args) {
         SpringApplication.run(CommentServiceApp.class, args);
