@@ -78,9 +78,11 @@ public class CommentServiceImpl implements CommentService {
 
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Комментарий с id " + commentId + " не найден."));
+
         if (!comment.getAuthorId().equals(userId)) {
             throw new ConflictException("Удалить можно только свой комментарий.");
         }
+
         commentRepository.delete(comment);
     }
 
@@ -164,9 +166,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private LocalDateTime parseDate(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) {
-            return null;
-        }
+        if (dateStr == null || dateStr.isBlank()) return null;
         return LocalDateTime.parse(dateStr, FORMATTER);
     }
 

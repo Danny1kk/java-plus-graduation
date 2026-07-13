@@ -9,6 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class NewUserRequest {
+
     @NotBlank(message = "Имя не может быть пустым")
     @Size(min = 2, max = 250)
     private String name;
