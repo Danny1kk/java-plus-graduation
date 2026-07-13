@@ -11,7 +11,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>server</artifactId>
+    <artifactId>stats-server</artifactId>
 
     <properties>
         <spring-boot.version>2.7.18</spring-boot.version>
