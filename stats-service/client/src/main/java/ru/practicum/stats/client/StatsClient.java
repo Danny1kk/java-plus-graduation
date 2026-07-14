@@ -5,18 +5,17 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.stats.dto.EndpointHitDto;
 import ru.practicum.stats.dto.StatsConstants;
 import ru.practicum.stats.dto.ViewStatsDto;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Collections;
 
 @Slf4j
 @Service
@@ -47,8 +46,8 @@ public class StatsClient {
         }
     }
 
-    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
-                                       List<String> uris, Boolean unique) {
+    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+
         try {
 //            String startEncoded = URLEncoder.encode(start.format(FORMATTER), StandardCharsets.UTF_8);
 //            String endEncoded = URLEncoder.encode(end.format(FORMATTER), StandardCharsets.UTF_8);
@@ -60,24 +59,22 @@ public class StatsClient {
                     .queryParam("start", start.format(FORMATTER))
                     .queryParam("end", end.format(FORMATTER));
 
-            if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", uris);
+            if (uris != null) {
+                for (String uri : uris) {
+                    builder.queryParam("uris", uri);
+                }
             }
 
             if (unique != null) {
                 builder.queryParam("unique", unique);
             }
 
-//            String url = builder.build(false).toUriString();
-            URI uri = builder.build().encode().toUri();
+            String url = builder.build(false).toUriString();
 
-            ResponseEntity<ViewStatsDto[]> response =
-                    restTemplate.getForEntity(uri, ViewStatsDto[].class);
-
+            ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(url, ViewStatsDto[].class);
             return Arrays.asList(Objects.requireNonNull(response.getBody()));
-
         } catch (Exception e) {
-            log.error("Ошибка при получении статистики: start={}, end={}", start, end, e);
+            log.error("Ошибка при получении статистики: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
