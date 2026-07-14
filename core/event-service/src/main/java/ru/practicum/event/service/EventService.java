@@ -249,62 +249,6 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
-//    public List<EventShortDto> searchPublic(String text, List<Long> categories, Boolean paid,
-//                                            LocalDateTime rangeStart, LocalDateTime rangeEnd,
-//                                            Boolean onlyAvailable, String sort, int from, int size) {
-//
-//        Pageable pageable = PageRequest.of(from / size, size);
-//
-//        if (categories != null && categories.isEmpty()) {
-//            categories = null;
-//        }
-//
-//        if (rangeStart == null && rangeEnd == null) {
-//            rangeStart = LocalDateTime.now();
-//        }
-//
-//        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-//            throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
-//        }
-//
-//        Page<Event> eventPage = eventRepository.searchPublic(text, categories, paid, rangeStart, rangeEnd, pageable);
-//        List<Event> events = eventPage.getContent();
-//        Map<Long, Long> viewsMap = getViewsMap(events);
-//
-//        return events.stream()
-//                .map(event -> {
-//                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-//                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
-//                    return eventMapper.toShortDto(event, confirmed, views);
-//                })
-//                .collect(Collectors.toList());
-//    }
-
-
-//    public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
-//                                          LocalDateTime rangeStart, LocalDateTime rangeEnd,
-//                                          int from, int size) {
-//        Pageable pageable = PageRequest.of(from / size, size);
-//
-//        if (users != null && users.isEmpty()) users = null;
-//        if (states != null && states.isEmpty()) states = null;
-//        if (categories != null && categories.isEmpty()) categories = null;
-//
-//        if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
-//        if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
-//
-//        List<Event> events = eventRepository.searchAdmin(users, states, categories, rangeStart, rangeEnd, pageable).getContent();
-//        Map<Long, Long> viewsMap = getViewsMap(events);
-//
-//        return events.stream()
-//                .map(event -> {
-//                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-//                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
-//                    return eventMapper.toFullDto(event, confirmed, views);
-//                })
-//                .collect(Collectors.toList());
-//    }
-
     public EventFullDto getPublic(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
