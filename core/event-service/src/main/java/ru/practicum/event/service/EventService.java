@@ -1,5 +1,6 @@
 package ru.practicum.event.service;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +24,8 @@ import ru.practicum.user.UserClient;
 import ru.practicum.user.dto.UserDto;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
+
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -32,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -372,14 +376,26 @@ public class EventService {
             return Collections.emptyMap();
         }
 
+        LocalDateTime start = events.stream()
+                .map(Event::getEventDate)
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now().minusYears(10));
+        LocalDateTime end = events.stream()
+                .map(Event::getEventDate)
+                .max(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now().plusYears(1));
+
+        start = start.minusHours(1);
+        end = end.plusHours(1);
+
         List<String> uris = events.stream()
                 .map(event -> "/events/" + event.getId())
                 .collect(Collectors.toList());
 
         try {
             List<ViewStatsDto> stats = statsClient.getStats(
-                    LocalDateTime.now().minusYears(10),
-                    LocalDateTime.now().plusYears(1),
+                    start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                    end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
                     uris,
                     true
             );
@@ -394,7 +410,7 @@ public class EventService {
                             (a, b) -> a > b ? a : b
                     ));
         } catch (Exception e) {
-            System.err.println("Не удалось получить статистику просмотров: " + e.getMessage());
+            log.error("Не удалось получить статистику просмотров: {}", e.getMessage());
             return Map.of();
         }
     }
