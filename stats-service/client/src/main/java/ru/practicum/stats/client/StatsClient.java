@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.dto.StatsConstants;
 import ru.practicum.stats.dto.ViewStatsDto;
 
 import java.time.LocalDateTime;
@@ -14,7 +15,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -24,7 +24,7 @@ public class StatsClient {
     private final DiscoveryClient discoveryClient;
 
     private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            DateTimeFormatter.ofPattern(StatsConstants.DATE_TIME_PATTERN);
 
     public StatsClient(RestTemplate restTemplate, DiscoveryClient discoveryClient) {
         this.restTemplate = restTemplate;
@@ -32,16 +32,17 @@ public class StatsClient {
     }
 
     private String getBaseUrl() {
-        return discoveryClient.getInstances("stats-server")
+        return discoveryClient.getInstances("stats-service")
                 .stream()
                 .findFirst()
                 .map(instance -> "http://" + instance.getHost() + ":" + instance.getPort())
-                .orElse("http://localhost:9090");
+                .orElse("http://stats-service:9090");
     }
 
     public void hit(EndpointHitDto hitDto) {
         try {
             restTemplate.postForEntity(getBaseUrl() + "/hit", hitDto, Object.class);
+            log.info("Статистика отправлена для URI: {}", hitDto.uri());
         } catch (Exception e) {
             log.error("Не удалось отправить hit: app={}, uri={}", hitDto.app(), hitDto.uri(), e);
         }
@@ -55,7 +56,7 @@ public class StatsClient {
                     .queryParam("end", end.format(FORMATTER));
 
             if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", String.join(",", uris));
+                builder.queryParam("uris", uris.toArray());
             }
 
             if (unique != null) {
@@ -63,13 +64,16 @@ public class StatsClient {
             }
 
             ResponseEntity<ViewStatsDto[]> response =
-                    restTemplate.getForEntity(builder.build().toUriString(), ViewStatsDto[].class);
+                    restTemplate.getForEntity(builder.build().toUri(), ViewStatsDto[].class);
 
-            return Arrays.asList(Objects.requireNonNull(response.getBody()));
+            if (response.getBody() != null) {
+                return Arrays.asList(response.getBody());
+            }
 
         } catch (Exception e) {
             log.error("Не удалось получить статистику просмотров", e);
-            return Collections.emptyList();
         }
+
+        return Collections.emptyList();
     }
 }
