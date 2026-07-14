@@ -27,10 +27,10 @@ public class StatsService {
         validateHit(endpointHitDto);
         hitRepository.save(new EndpointHit(
                 null,
-                endpointHitDto.app(),
-                endpointHitDto.uri(),
-                endpointHitDto.ip(),
-                endpointHitDto.timestamp()));
+                endpointHitDto.getApp(),
+                endpointHitDto.getUri(),
+                endpointHitDto.getIp(),
+                endpointHitDto.getTimestamp()));
     }
 
     @Transactional(readOnly = true)
@@ -51,16 +51,16 @@ public class StatsService {
         if (endpointHitDto == null) {
             throw new BadRequestException("Тело запроса должно быть указано.");
         }
-        if (!StringUtils.hasText(endpointHitDto.app())) {
+        if (!StringUtils.hasText(endpointHitDto.getApp())) {
             throw new BadRequestException("Поле app не должно быть пустым.");
         }
-        if (!StringUtils.hasText(endpointHitDto.uri())) {
+        if (!StringUtils.hasText(endpointHitDto.getUri())) {
             throw new BadRequestException("Поле uri не должно быть пустым.");
         }
-        if (!StringUtils.hasText(endpointHitDto.ip())) {
+        if (!StringUtils.hasText(endpointHitDto.getIp())) {
             throw new BadRequestException("Поле ip не должно быть пустым.");
         }
-        if (endpointHitDto.timestamp() == null) {
+        if (endpointHitDto.getTimestamp() == null) {
             throw new BadRequestException("Поле timestamp должно быть указано.");
         }
     }
