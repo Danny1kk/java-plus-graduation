@@ -151,7 +151,7 @@ public class EventService {
             rangeStart = LocalDateTime.now();
         }
 
-        if (rangeStart.isAfter(rangeEnd)) {
+        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
             throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
         }
 

@@ -27,6 +27,6 @@ public class EventClientFallback implements EventClient {
 
     @Override
     public Boolean isRequestModeration(Long eventId) {
-        return null;
+        return true;
     }
 }
