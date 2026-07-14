@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @RestControllerAdvice
 public class ErrorHandler {
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiError handleBadRequest(Exception exception) {
         return new ApiError(
                 HttpStatus.BAD_REQUEST.name(),

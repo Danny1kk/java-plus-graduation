@@ -51,21 +51,22 @@ public class StatsClient {
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
                                        List<String> uris, Boolean unique) {
         try {
+            String startEncoded = URLEncoder.encode(start.format(FORMATTER), StandardCharsets.UTF_8);
+            String endEncoded = URLEncoder.encode(end.format(FORMATTER), StandardCharsets.UTF_8);
+
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
-                    .queryParam("start", start.format(FORMATTER))
-                    .queryParam("end", end.format(FORMATTER));
+                    .queryParam("start", startEncoded)
+                    .queryParam("end", endEncoded);
 
             if (uris != null && !uris.isEmpty()) {
-                for (String uri : uris) {
-                    builder.queryParam("uris", uri);
-                }
+                builder.queryParam("uris", String.join(",", uris));
             }
 
             if (unique != null) {
                 builder.queryParam("unique", unique);
             }
 
-            String url = builder.build().toUriString();
+            String url = builder.build(false).toUriString();
 
             ResponseEntity<ViewStatsDto[]> response =
                     restTemplate.getForEntity(url, ViewStatsDto[].class);
