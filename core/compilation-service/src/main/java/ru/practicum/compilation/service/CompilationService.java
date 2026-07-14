@@ -25,7 +25,6 @@ public class CompilationService {
     private final CompilationRepository compilationRepository;
     private final EventClient eventClient;
     private final CompilationMapper compilationMapper;
-    private final EntityManager entityManager;
 
     @Transactional
     public CompilationDto create(NewCompilationDto dto) {
@@ -35,6 +34,8 @@ public class CompilationService {
         compilation.setEventIds(dto.getEvents() != null ? new LinkedHashSet<>(dto.getEvents()) : new LinkedHashSet<>());
 
         Compilation saved = compilationRepository.save(compilation);
+        Compilation detailed = compilationRepository.findDetailedById(saved.getId())
+                .orElseThrow(() -> new NotFoundException("Compilation with id=" + saved.getId() + " was not found"));
 
         return compilationMapper.toDto(saved);
     }
@@ -54,9 +55,10 @@ public class CompilationService {
             compilation.setTitle(dto.getTitle());
         }
 
-        Compilation saved = compilationRepository.saveAndFlush(compilation);
-
-        return compilationMapper.toDto(saved);
+        compilationRepository.save(compilation);
+        Compilation detailed = compilationRepository.findDetailedById(compilation.getId())
+                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compilation.getId() + " was not found"));
+        return compilationMapper.toDto(detailed);
     }
 
     @Transactional

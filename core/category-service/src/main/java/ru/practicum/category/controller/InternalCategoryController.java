@@ -16,13 +16,13 @@ public class InternalCategoryController {
 
     @GetMapping("/{catId}")
     public CategoryDto getCategory(@PathVariable Long catId) {
-
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new NotFoundException("Category not found"));
-
-        CategoryDto dto = new CategoryDto();
-        dto.setId(category.getId());
-        dto.setName(category.getName());
-        return dto;
+        return categoryRepository.findById(catId)
+                .map(cat -> {
+                    CategoryDto dto = new CategoryDto();
+                    dto.setId(cat.getId());
+                    dto.setName(cat.getName());
+                    return dto;
+                })
+                .orElse(null);
     }
 }

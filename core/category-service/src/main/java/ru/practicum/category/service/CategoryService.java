@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CategoryService {
+
     private final CategoryRepository categoryRepository;
     private final EventClient eventClient;
 
@@ -56,7 +57,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
 
-        if (eventClient.existsByCategoryId(catId)) {
+        if (eventClient.isPublished(catId)) {
             throw new ConflictException("Категория не является пустой");
         }
 

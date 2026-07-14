@@ -22,7 +22,6 @@ public class CompilationMapper {
         dto.setTitle(compilation.getTitle());
         dto.setEvents(compilation.getEventIds().stream()
                 .map(eventClient::getEventShort)
-                .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
         return dto;
     }

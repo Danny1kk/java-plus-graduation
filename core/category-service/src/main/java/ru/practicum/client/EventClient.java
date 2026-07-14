@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 @FeignClient(name = "event-service", fallback = EventClientFallback.class)
 public interface EventClient {
 
-    @GetMapping("/internal/events/category/{categoryId}/exists")
-    Boolean existsByCategoryId(@PathVariable Long categoryId);
+    @GetMapping("/internal/events/{eventId}/exists")
+    Boolean existsById(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/{eventId}/published")
+    Boolean isPublished(@PathVariable Long eventId);
 }
