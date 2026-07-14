@@ -71,8 +71,4 @@ public class StatsClient {
             return Collections.emptyList();
         }
     }
-
-    public Long hit(String s, long l) {
-        return null;
-    }
 }
