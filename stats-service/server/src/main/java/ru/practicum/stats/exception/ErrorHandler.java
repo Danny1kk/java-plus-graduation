@@ -10,14 +10,20 @@ import java.time.LocalDateTime;
 @RestControllerAdvice
 public class ErrorHandler {
 
-    @ExceptionHandler(Exception.class)
+//    @ExceptionHandler(Exception.class)
+//    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+//    public ApiError handleGeneralError(Exception exception) {
+//        return new ApiError(
+//                HttpStatus.INTERNAL_SERVER_ERROR.name(),
+//                "Внутренняя ошибка сервера.",
+//                exception.getMessage(),
+//                LocalDateTime.now());
+//    }
+
+    @ExceptionHandler(Throwable.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiError handleGeneralError(Exception exception) {
-        return new ApiError(
-                HttpStatus.INTERNAL_SERVER_ERROR.name(),
-                "Внутренняя ошибка сервера.",
-                exception.getMessage(),
-                LocalDateTime.now());
+    public ApiError handleGeneralError(Throwable e) {
+        return new ApiError("INTERNAL_SERVER_ERROR", "Произошла непредвиденная ошибка", e.getMessage(), LocalDateTime.now());
     }
 
     @ExceptionHandler({BadRequestException.class, InvalidDateRangeException.class})
