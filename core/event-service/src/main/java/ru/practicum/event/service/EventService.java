@@ -21,6 +21,10 @@ import ru.practicum.stats.client.StatsClient;
 import ru.practicum.stats.dto.ViewStatsDto;
 import ru.practicum.user.UserClient;
 import ru.practicum.user.dto.UserDto;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -140,33 +144,162 @@ public class EventService {
     public List<EventShortDto> searchPublic(String text, List<Long> categories, Boolean paid,
                                             LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                             Boolean onlyAvailable, String sort, int from, int size) {
-
         Pageable pageable = PageRequest.of(from / size, size);
 
-        if (categories != null && categories.isEmpty()) {
-            categories = null;
-        }
+        final LocalDateTime start = (rangeStart == null && rangeEnd == null) ? LocalDateTime.now() : rangeStart;
+        final LocalDateTime end = rangeEnd;
 
-        if (rangeStart == null && rangeEnd == null) {
-            rangeStart = LocalDateTime.now();
-        }
-
-        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+        if (start != null && end != null && start.isAfter(end)) {
             throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
         }
 
-        Page<Event> eventPage = eventRepository.searchPublic(text, categories, paid, rangeStart, rangeEnd, pageable);
+        Specification<Event> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("state"), EventState.PUBLISHED));
+
+            if (text != null && !text.isBlank()) {
+                String search = "%" + text.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("annotation")), search),
+                        cb.like(cb.lower(root.get("description")), search)
+                ));
+            }
+            if (categories != null && !categories.isEmpty()) {
+                predicates.add(root.get("categoryId").in(categories));
+            }
+            if (paid != null) {
+                predicates.add(cb.equal(root.get("paid"), paid));
+            }
+            if (start != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), start));
+            }
+            if (end != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), end));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Event> eventPage = eventRepository.findAll(spec, pageable);
         List<Event> events = eventPage.getContent();
+        Map<Long, Long> viewsMap = getViewsMap(events);
+
+        List<EventShortDto> result = events.stream()
+                .map(event -> {
+                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    return eventMapper.toShortDto(event, confirmed, views);
+                })
+                .filter(dto -> {
+                    if (onlyAvailable == null || !onlyAvailable) return true;
+                    Event original = events.stream().filter(e -> e.getId().equals(dto.getId())).findFirst().orElse(null);
+                    return original == null || original.getParticipantLimit() == 0 || dto.getConfirmedRequests() < original.getParticipantLimit();
+                })
+                .collect(Collectors.toList());
+
+        if (sort != null) {
+            if (sort.equalsIgnoreCase("EVENT_DATE")) {
+                result.sort(Comparator.comparing(EventShortDto::getEventDate));
+            } else if (sort.equalsIgnoreCase("VIEWS")) {
+                result.sort(Comparator.comparing(EventShortDto::getViews).reversed());
+            }
+        }
+
+        return result;
+    }
+
+    public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
+                                          LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                          int from, int size) {
+        Pageable pageable = PageRequest.of(from / size, size);
+
+        Specification<Event> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (users != null && !users.isEmpty()) {
+                predicates.add(root.get("initiatorId").in(users));
+            }
+            if (states != null && !states.isEmpty()) {
+                predicates.add(root.get("state").in(states));
+            }
+            if (categories != null && !categories.isEmpty()) {
+                predicates.add(root.get("categoryId").in(categories));
+            }
+            if (rangeStart != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
+            }
+            if (rangeEnd != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        List<Event> events = eventRepository.findAll(spec, pageable).getContent();
         Map<Long, Long> viewsMap = getViewsMap(events);
 
         return events.stream()
                 .map(event -> {
                     Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
-                    return eventMapper.toShortDto(event, confirmed, views);
+                    return eventMapper.toFullDto(event, confirmed, views);
                 })
                 .collect(Collectors.toList());
     }
+
+//    public List<EventShortDto> searchPublic(String text, List<Long> categories, Boolean paid,
+//                                            LocalDateTime rangeStart, LocalDateTime rangeEnd,
+//                                            Boolean onlyAvailable, String sort, int from, int size) {
+//
+//        Pageable pageable = PageRequest.of(from / size, size);
+//
+//        if (categories != null && categories.isEmpty()) {
+//            categories = null;
+//        }
+//
+//        if (rangeStart == null && rangeEnd == null) {
+//            rangeStart = LocalDateTime.now();
+//        }
+//
+//        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+//            throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
+//        }
+//
+//        Page<Event> eventPage = eventRepository.searchPublic(text, categories, paid, rangeStart, rangeEnd, pageable);
+//        List<Event> events = eventPage.getContent();
+//        Map<Long, Long> viewsMap = getViewsMap(events);
+//
+//        return events.stream()
+//                .map(event -> {
+//                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+//                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+//                    return eventMapper.toShortDto(event, confirmed, views);
+//                })
+//                .collect(Collectors.toList());
+//    }
+
+
+//    public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
+//                                          LocalDateTime rangeStart, LocalDateTime rangeEnd,
+//                                          int from, int size) {
+//        Pageable pageable = PageRequest.of(from / size, size);
+//
+//        if (users != null && users.isEmpty()) users = null;
+//        if (states != null && states.isEmpty()) states = null;
+//        if (categories != null && categories.isEmpty()) categories = null;
+//
+//        if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
+//        if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
+//
+//        List<Event> events = eventRepository.searchAdmin(users, states, categories, rangeStart, rangeEnd, pageable).getContent();
+//        Map<Long, Long> viewsMap = getViewsMap(events);
+//
+//        return events.stream()
+//                .map(event -> {
+//                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+//                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+//                    return eventMapper.toFullDto(event, confirmed, views);
+//                })
+//                .collect(Collectors.toList());
+//    }
 
     public EventFullDto getPublic(Long eventId) {
         Event event = eventRepository.findById(eventId)
@@ -181,30 +314,6 @@ public class EventService {
 
         Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
         return eventMapper.toFullDto(event, confirmed, views);
-    }
-
-    public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
-                                          LocalDateTime rangeStart, LocalDateTime rangeEnd,
-                                          int from, int size) {
-        Pageable pageable = PageRequest.of(from / size, size);
-
-        if (users != null && users.isEmpty()) users = null;
-        if (states != null && states.isEmpty()) states = null;
-        if (categories != null && categories.isEmpty()) categories = null;
-
-        if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
-        if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
-
-        List<Event> events = eventRepository.searchAdmin(users, states, categories, rangeStart, rangeEnd, pageable).getContent();
-        Map<Long, Long> viewsMap = getViewsMap(events);
-
-        return events.stream()
-                .map(event -> {
-                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
-                    return eventMapper.toFullDto(event, confirmed, views);
-                })
-                .collect(Collectors.toList());
     }
 
     @Transactional

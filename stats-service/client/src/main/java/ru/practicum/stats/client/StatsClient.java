@@ -44,20 +44,50 @@ public class StatsClient {
         }
     }
 
+//    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+//        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
+//                .queryParam("start", start.format(FORMATTER))
+//                .queryParam("end", end.format(FORMATTER))
+//                .queryParam("unique", unique);
+//
+//        if (uris != null && !uris.isEmpty()) {
+//            builder.queryParam("uris", uris.toArray());
+//        }
+//
+//        try {
+//            ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(
+//                    builder.build().toUri(),
+//                    ViewStatsDto[].class
+//            );
+//
+//            if (response.getBody() != null) {
+//                return Arrays.asList(response.getBody());
+//            }
+//        } catch (Exception e) {
+//            log.error("Ошибка при получении статистики с сервера: {}", e.getMessage());
+//        }
+//
+//        return List.of();
+//    }
+
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
-                .queryParam("start", start.format(FORMATTER))
-                .queryParam("end", end.format(FORMATTER))
-                .queryParam("unique", unique);
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("start", start.format(FORMATTER));
+        parameters.put("end", end.format(FORMATTER));
+        parameters.put("unique", unique);
+
+        String url = getBaseUrl() + "/stats?start={start}&end={end}&unique={unique}";
 
         if (uris != null && !uris.isEmpty()) {
-            builder.queryParam("uris", uris.toArray());
+            parameters.put("uris", String.join(",", uris));
+            url += "&uris={uris}";
         }
 
         try {
             ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(
-                    builder.build().toUri(),
-                    ViewStatsDto[].class
+                    url,
+                    ViewStatsDto[].class,
+                    parameters
             );
 
             if (response.getBody() != null) {
