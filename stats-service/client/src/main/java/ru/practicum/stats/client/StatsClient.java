@@ -132,7 +132,7 @@ public class StatsClient {
     }
 
     private String getBaseUrl() {
-        return discoveryClient.getInstances("stats-server")
+        return discoveryClient.getInstances("stats-service")
                 .stream()
                 .findFirst()
                 .map(instance -> "http://" + instance.getHost() + ":" + instance.getPort())
