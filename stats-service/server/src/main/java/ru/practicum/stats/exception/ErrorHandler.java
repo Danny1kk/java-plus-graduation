@@ -26,13 +26,12 @@ public class ErrorHandler {
         return new ApiError("INTERNAL_SERVER_ERROR", "Произошла непредвиденная ошибка", e.getMessage(), LocalDateTime.now());
     }
 
-    @ExceptionHandler({BadRequestException.class, InvalidDateRangeException.class})
+    @ExceptionHandler({
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class
+    })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleBadRequest(RuntimeException exception) {
-        return new ApiError(
-                HttpStatus.BAD_REQUEST.name(),
-                "Некорректный запрос.",
-                exception.getMessage(),
-                LocalDateTime.now());
+    public ApiError handleParamErrors(Exception e) {
+        return new ApiError("BAD_REQUEST", "Отсутствует обязательный параметр или неверный формат даты", e.getMessage(), LocalDateTime.now());
     }
 }
