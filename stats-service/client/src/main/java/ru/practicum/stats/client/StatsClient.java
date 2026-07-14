@@ -12,10 +12,7 @@ import ru.practicum.stats.dto.ViewStatsDto;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -41,34 +38,35 @@ public class StatsClient {
     public void hit(EndpointHitDto hitDto) {
         try {
             restTemplate.postForEntity(getBaseUrl() + "/hit", hitDto, Object.class);
+            log.info("Статистика успешно отправлена для URI: {}", hitDto.getUri());
         } catch (Exception e) {
             log.error("Ошибка при отправке hit: {}", e.getMessage());
         }
     }
 
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
+                .queryParam("start", start.format(FORMATTER))
+                .queryParam("end", end.format(FORMATTER))
+                .queryParam("unique", unique);
+
+        if (uris != null && !uris.isEmpty()) {
+            builder.queryParam("uris", uris.toArray());
+        }
 
         try {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
-                    .queryParam("start", start.format(FORMATTER))
-                    .queryParam("end", end.format(FORMATTER));
+            ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(
+                    builder.build().toUri(),
+                    ViewStatsDto[].class
+            );
 
-            if (uris != null) {
-                for (String uri : uris) {
-                    builder.queryParam("uris", uri);
-                }
+            if (response.getBody() != null) {
+                return Arrays.asList(response.getBody());
             }
-
-            if (unique != null) {
-                builder.queryParam("unique", unique);
-            }
-
-            String url = builder.build(false).toUriString();
-            ResponseEntity<ViewStatsDto[]> response = restTemplate.getForEntity(url, ViewStatsDto[].class);
-            return Arrays.asList(Objects.requireNonNull(response.getBody()));
         } catch (Exception e) {
-            log.error("Ошибка при получении статистики: {}", e.getMessage());
-            return Collections.emptyList();
+            log.error("Ошибка при получении статистики с сервера: {}", e.getMessage());
         }
+
+        return List.of();
     }
 }

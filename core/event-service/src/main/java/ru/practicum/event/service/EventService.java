@@ -23,6 +23,7 @@ import ru.practicum.user.UserClient;
 import ru.practicum.user.dto.UserDto;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -142,8 +143,9 @@ public class EventService {
 
         Pageable pageable = PageRequest.of(from / size, size);
 
-        if (rangeStart == null) rangeStart = LocalDateTime.of(1900, 1, 1, 0, 0);
-        if (rangeEnd == null) rangeEnd = LocalDateTime.of(3000, 1, 1, 0, 0);
+        if (rangeStart == null && rangeEnd == null) {
+            rangeStart = LocalDateTime.now();
+        }
 
         if (rangeStart.isAfter(rangeEnd)) {
             throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
@@ -228,6 +230,11 @@ public class EventService {
                 if (event.getState() != EventState.PENDING) {
                     throw new ConflictException("Опубликовать можно только событие в статусе PENDING");
                 }
+
+                if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
+                    throw new ConflictException("Дата начала события должна быть не ранее чем за час от даты публикации");
+                }
+
                 event.setState(EventState.PUBLISHED);
                 event.setPublishedOn(LocalDateTime.now());
             } else if (dto.getStateAction().equals("REJECT_EVENT")) {
@@ -244,7 +251,9 @@ public class EventService {
     }
 
     private Map<Long, Long> getViewsMap(List<Event> events) {
-        if (events.isEmpty()) return Map.of();
+        if (events == null || events.isEmpty()) {
+            return Collections.emptyMap();
+        }
 
         List<String> uris = events.stream()
                 .map(event -> "/events/" + event.getId())
