@@ -32,11 +32,11 @@ public class StatsClient {
     }
 
     private String getBaseUrl() {
-        return discoveryClient.getInstances("stats-service")
+        return discoveryClient.getInstances("stats-server")
                 .stream()
                 .findFirst()
                 .map(instance -> "http://" + instance.getHost() + ":" + instance.getPort())
-                .orElse("http://stats-service:9090");
+                .orElse("http://stats-server:9090");
     }
 
     public void hit(EndpointHitDto hitDto) {
