@@ -143,6 +143,10 @@ public class EventService {
 
         Pageable pageable = PageRequest.of(from / size, size);
 
+        if (categories != null && categories.isEmpty()) {
+            categories = null;
+        }
+
         if (rangeStart == null && rangeEnd == null) {
             rangeStart = LocalDateTime.now();
         }
@@ -183,6 +187,10 @@ public class EventService {
                                           LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                           int from, int size) {
         Pageable pageable = PageRequest.of(from / size, size);
+
+        if (users != null && users.isEmpty()) users = null;
+        if (states != null && states.isEmpty()) states = null;
+        if (categories != null && categories.isEmpty()) categories = null;
 
         if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
         if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
