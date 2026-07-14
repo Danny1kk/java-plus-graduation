@@ -24,10 +24,10 @@ public class ErrorHandler {
 //                LocalDateTime.now());
 //    }
 
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(BadRequestException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleGeneralError(Throwable e) {
-        return new ApiError("INTERNAL_SERVER_ERROR", "Произошла непредвиденная ошибка", e.getMessage(), LocalDateTime.now());
+        return new ApiError("BAD_REQUEST", "Произошла непредвиденная ошибка", e.getMessage(), LocalDateTime.now());
     }
 
     @ExceptionHandler({

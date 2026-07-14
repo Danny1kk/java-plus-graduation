@@ -41,7 +41,7 @@ public class EventService {
 
     @Transactional
     public EventFullDto create(Long userId, NewEventDto dto) {
-        if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+        if (!dto.getEventDate().isAfter(LocalDateTime.now().plusHours(2))) {
             throw new BadRequestException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
 
@@ -142,8 +142,8 @@ public class EventService {
 
         Pageable pageable = PageRequest.of(from / size, size);
 
-        if (rangeStart == null) rangeStart = LocalDateTime.now();
-        if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
+        if (rangeStart == null) rangeStart = LocalDateTime.of(1900, 1, 1, 0, 0);
+        if (rangeEnd == null) rangeEnd = LocalDateTime.of(3000, 1, 1, 0, 0);
 
         if (rangeStart.isAfter(rangeEnd)) {
             throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
@@ -171,7 +171,7 @@ public class EventService {
         }
 
         Map<Long, Long> viewsMap = getViewsMap(List.of(event));
-        Long views = viewsMap.getOrDefault(event.getId(), 0L) + 1;
+        Long views = statsClient.hit("/events/" + event.getId(), 0L) + 1;
 
         Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
         return eventMapper.toFullDto(event, confirmed, views);
