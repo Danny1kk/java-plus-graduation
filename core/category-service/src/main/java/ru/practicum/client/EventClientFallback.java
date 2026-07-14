@@ -6,6 +6,6 @@ import org.springframework.stereotype.Component;
 public class EventClientFallback implements EventClient {
     @Override
     public Boolean existsByCategoryId(Long categoryId) {
-        return false;
+        throw new RuntimeException("Служба обработки событий недоступна.");
     }
 }

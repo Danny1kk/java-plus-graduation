@@ -3,7 +3,9 @@ package ru.practicum.category.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.category.model.Category;
 import ru.practicum.category.service.CategoryService;
+import ru.practicum.exeption.NotFoundException;
 
 import java.util.List;
 
@@ -22,6 +24,6 @@ public class PublicCategoryController {
 
     @GetMapping("/{catId}")
     public CategoryDto getCategory(@PathVariable Long catId) {
-        return categoryService.getCategory(catId);
+                return categoryService.getCategory(catId);
     }
 }

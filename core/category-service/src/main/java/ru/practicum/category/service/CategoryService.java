@@ -43,7 +43,8 @@ public class CategoryService {
         }
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
-        if (!category.getName().equals(dto.getName()) && categoryRepository.existsByName(dto.getName())) {
+        if (dto.getName() != null && !category.getName().equals(dto.getName())
+                && categoryRepository.existsByName(dto.getName())) {
             throw new ConflictException("Категория с именем \"" + dto.getName() + "\" уже существует");
         }
         category.setName(dto.getName());
