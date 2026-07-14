@@ -9,9 +9,8 @@ import ru.practicum.stats.dto.EndpointHitDto;
 import ru.practicum.stats.dto.StatsConstants;
 import ru.practicum.stats.dto.ViewStatsDto;
 import org.springframework.web.util.UriComponentsBuilder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -51,25 +50,29 @@ public class StatsClient {
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
                                        List<String> uris, Boolean unique) {
         try {
-            String startEncoded = URLEncoder.encode(start.format(FORMATTER), StandardCharsets.UTF_8);
-            String endEncoded = URLEncoder.encode(end.format(FORMATTER), StandardCharsets.UTF_8);
+//            String startEncoded = URLEncoder.encode(start.format(FORMATTER), StandardCharsets.UTF_8);
+//            String endEncoded = URLEncoder.encode(end.format(FORMATTER), StandardCharsets.UTF_8);
 
+//            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
+//                    .queryParam("start", startEncoded)
+//                    .queryParam("end", endEncoded);
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
-                    .queryParam("start", startEncoded)
-                    .queryParam("end", endEncoded);
+                    .queryParam("start", start.format(FORMATTER))
+                    .queryParam("end", end.format(FORMATTER));
 
             if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", String.join(",", uris));
+                builder.queryParam("uris", uris);
             }
 
             if (unique != null) {
                 builder.queryParam("unique", unique);
             }
 
-            String url = builder.build(false).toUriString();
+//            String url = builder.build(false).toUriString();
+            URI uri = builder.build().encode().toUri();
 
             ResponseEntity<ViewStatsDto[]> response =
-                    restTemplate.getForEntity(url, ViewStatsDto[].class);
+                    restTemplate.getForEntity(uri, ViewStatsDto[].class);
 
             return Arrays.asList(Objects.requireNonNull(response.getBody()));
 

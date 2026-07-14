@@ -9,9 +9,20 @@ import java.time.LocalDateTime;
 
 @RestControllerAdvice
 public class ErrorHandler {
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiError handleBadRequest(Exception exception) {
+    public ApiError handleGeneralError(Exception exception) {
+        return new ApiError(
+                HttpStatus.INTERNAL_SERVER_ERROR.name(),
+                "Внутренняя ошибка сервера.",
+                exception.getMessage(),
+                LocalDateTime.now());
+    }
+
+    @ExceptionHandler({BadRequestException.class, InvalidDateRangeException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleBadRequest(RuntimeException exception) {
         return new ApiError(
                 HttpStatus.BAD_REQUEST.name(),
                 "Некорректный запрос.",
