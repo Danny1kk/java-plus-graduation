@@ -1,6 +1,7 @@
 package ru.practicum.stats.client;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import ru.practicum.stats.dto.EndpointHitDto;
 import ru.practicum.stats.dto.ViewStatsDto;
 
@@ -8,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Slf4j
+@Component
 public class StatsFeignClientFallback implements StatsClient {
 
     @Override
