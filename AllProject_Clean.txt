@@ -1,0 +1,4981 @@
+﻿=== D:\JavaProjects\JavaCore\java-plus-graduation\.github\workflows\api-tests.yml.FullName ===
+name: Explore With Me Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      stats_test_mode:
+        description: "Р РµР¶РёРј С‚РµСЃС‚РёСЂРѕРІР°РЅРёСЏ СЂРµРєРѕРјРµРЅРґР°С‚РµР»СЊРЅРѕР№ СЃРёСЃС‚РµРјС‹"
+        required: false
+        default: ANALYZE
+        type: choice
+        options:
+          - COLLECTION
+          - AGGREGATION
+          - ANALYZE
+      verbose_mode:
+        description: "Р’РєР»СЋС‡РёС‚СЊ РїРѕРґСЂРѕР±РЅС‹Рµ Р»РѕРіРё РІРѕ РІСЂРµРјСЏ С‚РµСЃС‚РѕРІ"
+        required: false
+        default: false
+        type: boolean
+      print_logs:
+        description: "Р’РєР»СЋС‡РёС‚СЊ РІС‹РІРѕРґ Р»РѕРіРѕРІ РІ РєРѕРЅСЃРѕР»СЊ"
+        required: false
+        default: false
+        type: boolean
+  pull_request:
+
+jobs:
+  build:
+    uses: yandex-praktikum/java-plus-graduation/.github/workflows/api-tests.yml@ci
+    with:
+      stats_test_mode: ${{ inputs.stats_test_mode }}
+      verbose_mode: ${{ inputs.verbose_mode }}
+      print_logs: ${{ inputs.print_logs }}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\controller\AdminCategoryController.java.FullName ===
+package ru.practicum.category.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.category.dto.NewCategoryDto;
+import ru.practicum.category.service.CategoryService;
+
+@RestController
+@RequestMapping("/admin/categories")
+@RequiredArgsConstructor
+public class AdminCategoryController {
+    private final CategoryService categoryService;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CategoryDto create(@Valid @RequestBody NewCategoryDto dto) {
+        return categoryService.create(dto);
+    }
+
+    @PatchMapping("/{catId}")
+    public CategoryDto update(@PathVariable Long catId, @Valid @RequestBody CategoryDto dto) {
+        return categoryService.update(catId, dto);
+    }
+
+    @DeleteMapping("/{catId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long catId) {
+        categoryService.delete(catId);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\controller\InternalCategoryController.java.FullName ===
+package ru.practicum.category.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.category.repository.CategoryRepository;
+
+@RestController
+@RequestMapping("/internal/categories")
+@RequiredArgsConstructor
+public class InternalCategoryController {
+
+    private final CategoryRepository categoryRepository;
+
+    @GetMapping("/{catId}")
+    public CategoryDto getCategory(@PathVariable Long catId) {
+        return categoryRepository.findById(catId)
+                .map(cat -> {
+                    CategoryDto dto = new CategoryDto();
+                    dto.setId(cat.getId());
+                    dto.setName(cat.getName());
+                    return dto;
+                })
+                .orElse(null);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\controller\PublicCategoryController.java.FullName ===
+package ru.practicum.category.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.category.service.CategoryService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/categories")
+@RequiredArgsConstructor
+public class PublicCategoryController {
+    private final CategoryService categoryService;
+
+    @GetMapping
+    public List<CategoryDto> getCategories(
+            @RequestParam(defaultValue = "0") int from,
+            @RequestParam(defaultValue = "10") int size) {
+        return categoryService.getCategories(from, size);
+    }
+
+    @GetMapping("/{catId}")
+    public CategoryDto getCategory(@PathVariable Long catId) {
+        return categoryService.getCategory(catId);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\model\Category.java.FullName ===
+package ru.practicum.category.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "categories")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Category {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 50, unique = true)
+    private String name;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\repository\CategoryRepository.java.FullName ===
+package ru.practicum.category.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import ru.practicum.category.model.Category;
+
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+    boolean existsByName(String name);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\service\CategoryService.java.FullName ===
+package ru.practicum.category.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.category.dto.NewCategoryDto;
+import ru.practicum.category.model.Category;
+import ru.practicum.category.repository.CategoryRepository;
+import ru.practicum.client.EventClient;
+import ru.practicum.exeption.BadRequestException;
+import ru.practicum.exeption.ConflictException;
+import ru.practicum.exeption.NotFoundException;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CategoryService {
+    private final CategoryRepository categoryRepository;
+    private final EventClient eventClient;
+
+    @Transactional
+    public CategoryDto create(NewCategoryDto dto) {
+        if (dto.getName().length() > 50) {
+            throw new BadRequestException("РРјСЏ РєР°С‚РµРіРѕСЂРёРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 50 СЃРёРјРІРѕР»РѕРІ");
+        }
+        if (categoryRepository.existsByName(dto.getName())) {
+            throw new ConflictException("РљР°С‚РµРіРѕСЂРёСЏ СЃ РёРјРµРЅРµРј \"" + dto.getName() + "\" СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚");
+        }
+        Category category = new Category();
+        category.setName(dto.getName());
+        return toDto(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public CategoryDto update(Long catId, CategoryDto dto) {
+        if (dto.getName() != null && dto.getName().length() > 50) {
+            throw new BadRequestException("РРјСЏ РєР°С‚РµРіРѕСЂРёРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РґР»РёРЅРЅРµРµ 50 СЃРёРјРІРѕР»РѕРІ");
+        }
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ СЃ id=" + catId + " РЅРµ РЅР°Р№РґРµРЅР°"));
+        if (!category.getName().equals(dto.getName()) && categoryRepository.existsByName(dto.getName())) {
+            throw new ConflictException("РљР°С‚РµРіРѕСЂРёСЏ СЃ РёРјРµРЅРµРј \"" + dto.getName() + "\" СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚");
+        }
+        category.setName(dto.getName());
+        return toDto(categoryRepository.save(category));
+    }
+
+    @Transactional
+    public void delete(Long catId) {
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ СЃ id=" + catId + " РЅРµ РЅР°Р№РґРµРЅР°"));
+
+        if (eventClient.existsByCategoryId(catId)) {
+            throw new ConflictException("РљР°С‚РµРіРѕСЂРёСЏ РЅРµ СЏРІР»СЏРµС‚СЃСЏ РїСѓСЃС‚РѕР№");
+        }
+
+        categoryRepository.delete(category);
+    }
+
+    public List<CategoryDto> getCategories(int from, int size) {
+        return categoryRepository.findAll(PageRequest.of(from / size, size)).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public CategoryDto getCategory(Long catId) {
+        Category category = categoryRepository.findById(catId)
+                .orElseThrow(() -> new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ СЃ id=" + catId + " РЅРµ РЅР°Р№РґРµРЅР°"));
+        return toDto(category);
+    }
+
+    private CategoryDto toDto(Category category) {
+        CategoryDto dto = new CategoryDto();
+        dto.setId(category.getId());
+        dto.setName(category.getName());
+        return dto;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\category\CategoryServiceApp.java.FullName ===
+package ru.practicum.category;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication(scanBasePackages = {"ru.practicum.category", "ru.practicum.exeption"})
+@EnableDiscoveryClient
+@EnableFeignClients(basePackages = "ru.practicum.client")
+public class CategoryServiceApp {
+    public static void main(String[] args) {
+        SpringApplication.run(CategoryServiceApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\client\EventClient.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+@FeignClient(name = "event-service", fallback = EventClientFallback.class)
+public interface EventClient {
+
+    @GetMapping("/internal/events/category/{categoryId}/exists")
+    Boolean existsByCategoryId(@PathVariable Long categoryId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\java\ru\practicum\client\EventClientFallback.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class EventClientFallback implements EventClient {
+    @Override
+    public Boolean existsByCategoryId(Long categoryId) {
+        return false;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\src\main\resources\application.properties.FullName ===
+spring.application.name=category-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\target\classes\application.properties.FullName ===
+spring.application.name=category-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\category-service\target\maven-archiver\pom.properties.FullName ===
+artifactId=category-service
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\client\EventClient.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+@FeignClient(name = "event-service", fallback = EventClientFallback.class)
+public interface EventClient {
+
+    @GetMapping("/internal/events/{eventId}/exists")
+    Boolean existsById(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/{eventId}/published")
+    Boolean isPublished(@PathVariable Long eventId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\client\EventClientFallback.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class EventClientFallback implements EventClient {
+
+    @Override
+    public Boolean existsById(Long eventId) {
+        return false;
+    }
+
+    @Override
+    public Boolean isPublished(Long eventId) {
+        return false;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\client\UserClient.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+@FeignClient(name = "user-service", fallback = UserClientFallback.class)
+public interface UserClient {
+
+    @GetMapping("/internal/users/{userId}/exists")
+    Boolean existsById(@PathVariable Long userId);
+
+    @GetMapping("/internal/users/{userId}/name")
+    String getUserName(@PathVariable Long userId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\client\UserClientFallback.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class UserClientFallback implements UserClient {
+
+    @Override
+    public Boolean existsById(Long userId) {
+        return false;
+    }
+
+    @Override
+    public String getUserName(Long userId) {
+        return null;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\controller\AdminCommentController.java.FullName ===
+package ru.practicum.comment.controller;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.comment.dto.CommentDto;
+import ru.practicum.comment.dto.UpdateCommentAdminRequest;
+import ru.practicum.comment.service.CommentService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/admin/comments")
+@RequiredArgsConstructor
+public class AdminCommentController {
+
+    private final CommentService commentService;
+
+    @GetMapping
+    public List<CommentDto> getComments(
+            @RequestParam(required = false) String rangeStart,
+            @RequestParam(required = false) String rangeEnd,
+            @RequestParam(required = false) List<Long> users,
+            @RequestParam(required = false) String text,
+            @PositiveOrZero @RequestParam(defaultValue = "0") Integer from,
+            @Positive @RequestParam(defaultValue = "10") Integer size) {
+
+        return commentService.getCommentsAdmin(rangeStart, rangeEnd, users, text, from, size);
+    }
+
+    @PatchMapping("/{commentId}")
+    public CommentDto updateComment(@PathVariable Long commentId,
+                                    @Valid @RequestBody UpdateCommentAdminRequest request) {
+        return commentService.updateCommentAdmin(commentId, request);
+    }
+
+    @DeleteMapping("/{commentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteComment(@PathVariable Long commentId) {
+        commentService.deleteAdminComment(commentId);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\controller\PrivateCommentController.java.FullName ===
+package ru.practicum.comment.controller;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.comment.dto.CommentDto;
+import ru.practicum.comment.dto.CommentShortDto;
+import ru.practicum.comment.dto.NewCommentDto;
+import ru.practicum.comment.service.CommentService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/users/{userId}/comments")
+@RequiredArgsConstructor
+@Validated
+public class PrivateCommentController {
+    private final CommentService commentService;
+
+    @PostMapping("/{eventId}")
+    @ResponseStatus(value = HttpStatus.CREATED)
+    public CommentDto addComment(@Valid @RequestBody NewCommentDto commentNewDto,
+                                 @PathVariable Long userId,
+                                 @PathVariable Long eventId) {
+
+        return commentService.addComment(userId, eventId, commentNewDto);
+    }
+
+    @PatchMapping("/{commentId}")
+    @ResponseStatus(value = HttpStatus.OK)
+    public CommentDto updateComment(@Valid @RequestBody NewCommentDto commentNewDto,
+                                    @PathVariable Long userId,
+                                    @PathVariable Long commentId) {
+
+        return commentService.updateComment(userId, commentId, commentNewDto);
+    }
+
+    @DeleteMapping("/{commentId}")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    public void deleteComment(@PathVariable Long userId,
+                              @PathVariable Long commentId) {
+
+        commentService.deletePrivateComment(userId, commentId);
+    }
+
+    @GetMapping
+    @ResponseStatus(value = HttpStatus.OK)
+    public List<CommentShortDto> getCommentsByUserId(@PathVariable Long userId,
+                                                     @RequestParam(required = false) String rangeStart,
+                                                     @RequestParam(required = false) String rangeEnd,
+                                                     @PositiveOrZero @RequestParam(defaultValue = "0") Integer from,
+                                                     @Positive @RequestParam(defaultValue = "10") Integer size) {
+
+        return commentService.getCommentsByUserId(rangeStart, rangeEnd, userId, from, size);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\controller\PublicCommentController.java.FullName ===
+package ru.practicum.comment.controller;
+
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.comment.dto.CommentShortDto;
+import ru.practicum.comment.service.CommentService;
+
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/comments")
+@RequiredArgsConstructor
+public class PublicCommentController {
+    private final CommentService commentService;
+
+    @GetMapping("/{eventId}")
+    @ResponseStatus(value = HttpStatus.OK)
+    public List<CommentShortDto> getCommentsByEventId(@PathVariable Long eventId,
+                                                      @RequestParam(required = false, name = "rangeStart") String rangeStart,
+                                                      @RequestParam(required = false, name = "rangeEnd") String rangeEnd,
+                                                      @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
+                                                      @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
+
+        return commentService.getCommentsByEventId(rangeStart, rangeEnd, eventId, from, size);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\mapper\CommentMapper.java.FullName ===
+package ru.practicum.comment.mapper;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import ru.practicum.client.UserClient;
+import ru.practicum.comment.dto.CommentDto;
+import ru.practicum.comment.dto.NewCommentDto;
+import ru.practicum.comment.model.Comment;
+import ru.practicum.comment.model.CommentStatus;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class CommentMapper {
+
+    private final UserClient userClient;
+
+    public Comment returnComment(NewCommentDto dto, Long userId, Long eventId) {
+        return Comment.builder()
+                .authorId(userId)
+                .eventId(eventId)
+                .text(dto.getText())
+                .status(CommentStatus.PENDING)
+                .build();
+    }
+
+    public CommentDto returnCommentDto(Comment comment) {
+        String authorName = userClient.getUserName(comment.getAuthorId());
+        return CommentDto.builder()
+                .id(comment.getId())
+                .text(comment.getText())
+                .eventId(comment.getEventId())
+                .authorName(authorName != null ? authorName : "User #" + comment.getAuthorId())
+                .created(comment.getCreated())
+                .status(comment.getStatus().name())
+                .build();
+    }
+
+    public List<CommentDto> returnCommentDtoList(Iterable<Comment> comments) {
+        List<CommentDto> result = new ArrayList<>();
+        for (Comment comment : comments) {
+            result.add(returnCommentDto(comment));
+        }
+        return result;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\model\Comment.java.FullName ===
+package ru.practicum.comment.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "comments")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class Comment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "text", nullable = false)
+    String text;
+
+    @Column(name = "event_id")
+    private Long eventId;
+
+    @Column(name = "author_id")
+    private Long authorId;
+
+    @Column(name = "created")
+    LocalDateTime created;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    CommentStatus status;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\model\CommentStatus.java.FullName ===
+package ru.practicum.comment.model;
+
+public enum CommentStatus {
+    PENDING,
+    PUBLISHED,
+    REJECTED
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\repository\CommentRepository.java.FullName ===
+package ru.practicum.comment.repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import ru.practicum.comment.model.Comment;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Repository
+public interface CommentRepository extends JpaRepository<Comment, Long> {
+
+    List<Comment> findAllByEventId(Long eventId, Pageable pageable);
+
+    List<Comment> findAllByAuthorId(Long userId, Pageable pageable);
+
+    @Query("SELECT c FROM Comment c " +
+            "WHERE (:users IS NULL OR c.authorId IN :users) " +
+            "AND (:text IS NULL OR LOWER(c.text) LIKE LOWER(CONCAT('%', :text, '%'))) " +
+            "AND (:rangeStart IS NULL OR c.created >= :rangeStart) " +
+            "AND (:rangeEnd IS NULL OR c.created <= :rangeEnd) ")
+    Page<Comment> searchAdmin(@Param("users") List<Long> users,
+                              @Param("text") String text,
+                              @Param("rangeStart") LocalDateTime rangeStart,
+                              @Param("rangeEnd") LocalDateTime rangeEnd,
+                              Pageable pageable);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\service\CommentService.java.FullName ===
+package ru.practicum.comment.service;
+
+import ru.practicum.comment.dto.CommentDto;
+import ru.practicum.comment.dto.CommentShortDto;
+import ru.practicum.comment.dto.NewCommentDto;
+import ru.practicum.comment.dto.UpdateCommentAdminRequest;
+
+import java.util.List;
+
+public interface CommentService {
+
+    CommentDto addComment(Long userId, Long eventId, NewCommentDto commentNewDto);
+
+    CommentDto updateComment(Long userId, Long commentId, NewCommentDto commentNewDto);
+
+    void deletePrivateComment(Long userId, Long commentId);
+
+    List<CommentShortDto> getCommentsByUserId(String rangeStart, String rangeEnd, Long userId, Integer from, Integer size);
+
+    List<CommentShortDto> getCommentsByEventId(String rangeStart, String rangeEnd, Long eventId, Integer from, Integer size);
+
+    List<CommentDto> getCommentsAdmin(String rangeStart, String rangeEnd, List<Long> users,
+                                      String text, Integer from, Integer size);
+
+    CommentDto updateCommentAdmin(Long commentId, UpdateCommentAdminRequest request);
+
+    void deleteAdminComment(Long commentId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\service\CommentServiceImpl.java.FullName ===
+package ru.practicum.comment.service;
+
+import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.comment.dto.CommentDto;
+import ru.practicum.comment.dto.CommentShortDto;
+import ru.practicum.comment.dto.NewCommentDto;
+import ru.practicum.comment.dto.UpdateCommentAdminRequest;
+import ru.practicum.comment.mapper.CommentMapper;
+import ru.practicum.comment.model.Comment;
+import ru.practicum.comment.model.CommentStatus;
+import ru.practicum.comment.repository.CommentRepository;
+import ru.practicum.client.EventClient;
+import ru.practicum.exeption.BadRequestException;
+import ru.practicum.exeption.ConflictException;
+import ru.practicum.exeption.NotFoundException;
+import ru.practicum.client.UserClient;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@AllArgsConstructor
+@Transactional(readOnly = true)
+public class CommentServiceImpl implements CommentService {
+
+    private final CommentRepository commentRepository;
+    private final UserClient userClient;
+    private final EventClient eventClient;
+    private final CommentMapper commentMapper;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @Override
+    @Transactional
+    public CommentDto addComment(Long userId, Long eventId, NewCommentDto dto) {
+
+        if (!userClient.existsById(userId)) {
+            throw new NotFoundException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ id " + userId + " РЅРµ РЅР°Р№РґРµРЅ.");
+        }
+        if (!eventClient.existsById(eventId)) {
+            throw new NotFoundException("РЎРѕР±С‹С‚РёРµ СЃ id " + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ.");
+        }
+        if (!eventClient.isPublished(eventId)) {
+            throw new BadRequestException("РќРµР»СЊР·СЏ РєРѕРјРјРµРЅС‚РёСЂРѕРІР°С‚СЊ РЅРµРѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРµ СЃРѕР±С‹С‚РёРµ.");
+        }
+
+        Comment comment = commentMapper.returnComment(dto, userId, eventId);
+        comment.setCreated(LocalDateTime.now());
+        comment.setStatus(CommentStatus.PENDING);
+        return commentMapper.returnCommentDto(commentRepository.save(comment));
+    }
+
+    @Override
+    @Transactional
+    public CommentDto updateComment(Long userId, Long commentId, NewCommentDto dto) {
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("РљРѕРјРјРµРЅС‚Р°СЂРёР№ СЃ id " + commentId + " РЅРµ РЅР°Р№РґРµРЅ."));
+
+        if (!comment.getAuthorId().equals(userId)) {
+            throw new ConflictException("Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРІРѕР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№.");
+        }
+
+        comment.setText(dto.getText());
+        comment.setStatus(CommentStatus.PENDING);
+
+        return commentMapper.returnCommentDto(commentRepository.save(comment));
+    }
+
+    @Override
+    @Transactional
+    public void deletePrivateComment(Long userId, Long commentId) {
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("РљРѕРјРјРµРЅС‚Р°СЂРёР№ СЃ id " + commentId + " РЅРµ РЅР°Р№РґРµРЅ."));
+
+        if (!comment.getAuthorId().equals(userId)) {
+            throw new ConflictException("РЈРґР°Р»РёС‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРІРѕР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№.");
+        }
+
+        commentRepository.delete(comment);
+    }
+
+    @Override
+    public List<CommentShortDto> getCommentsByUserId(String rangeStart, String rangeEnd, Long userId,
+                                                     Integer from, Integer size) {
+
+        if (!userClient.existsById(userId)) {
+            throw new NotFoundException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ id " + userId + " РЅРµ РЅР°Р№РґРµРЅ.");
+        }
+
+        LocalDateTime start = parseDate(rangeStart);
+        LocalDateTime end = parseDate(rangeEnd);
+        validateDateRange(start, end);
+
+        PageRequest pageable = PageRequest.of(from / size, size);
+        List<Comment> comments = commentRepository.findAllByAuthorId(userId, pageable);
+
+        return comments.stream()
+                .map(this::toCommentShortDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CommentShortDto> getCommentsByEventId(String rangeStart, String rangeEnd, Long eventId,
+                                                      Integer from, Integer size) {
+
+        if (!eventClient.existsById(eventId)) {
+            throw new NotFoundException("РЎРѕР±С‹С‚РёРµ СЃ id " + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ.");
+        }
+
+        LocalDateTime start = parseDate(rangeStart);
+        LocalDateTime end = parseDate(rangeEnd);
+        validateDateRange(start, end);
+
+        PageRequest pageable = PageRequest.of(from / size, size);
+        List<Comment> comments = commentRepository.findAllByEventId(eventId, pageable);
+
+        return comments.stream()
+                .filter(comment -> comment.getStatus() == CommentStatus.PUBLISHED)
+                .map(this::toCommentShortDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CommentDto> getCommentsAdmin(String rangeStart, String rangeEnd, List<Long> users,
+                                             String text, Integer from, Integer size) {
+
+        PageRequest pageable = PageRequest.of(from / size, size);
+        LocalDateTime start = parseDate(rangeStart);
+        LocalDateTime end = parseDate(rangeEnd);
+        validateDateRange(start, end);
+
+        Page<Comment> page = commentRepository.searchAdmin(users, text, start, end, pageable);
+
+        return page.getContent().stream()
+                .map(commentMapper::returnCommentDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public CommentDto updateCommentAdmin(Long commentId, UpdateCommentAdminRequest request) {
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("РљРѕРјРјРµРЅС‚Р°СЂРёР№ СЃ id=" + commentId + " РЅРµ РЅР°Р№РґРµРЅ"));
+
+        CommentStatus newStatus = CommentStatus.valueOf(request.getStatus().toUpperCase());
+        comment.setStatus(newStatus);
+        return commentMapper.returnCommentDto(commentRepository.save(comment));
+    }
+
+    @Override
+    @Transactional
+    public void deleteAdminComment(Long commentId) {
+
+        if (!commentRepository.existsById(commentId)) {
+            throw new NotFoundException("РљРѕРјРјРµРЅС‚Р°СЂРёР№ СЃ id=" + commentId + " РЅРµ РЅР°Р№РґРµРЅ");
+        }
+        commentRepository.deleteById(commentId);
+    }
+
+    private LocalDateTime parseDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        return LocalDateTime.parse(dateStr, FORMATTER);
+    }
+
+    private void validateDateRange(LocalDateTime start, LocalDateTime end) {
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new BadRequestException("Р”Р°С‚Р° РЅР°С‡Р°Р»Р° РґРёР°РїР°Р·РѕРЅР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїРѕР·Р¶Рµ РґР°С‚С‹ РєРѕРЅС†Р°.");
+        }
+    }
+
+    private CommentShortDto toCommentShortDto(Comment comment) {
+        return CommentShortDto.builder()
+                .userName("User #" + comment.getAuthorId())
+                .eventTitle("Event #" + comment.getEventId())
+                .text(comment.getText())
+                .created(comment.getCreated())
+                .build();
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\java\ru\practicum\comment\CommentServiceApp.java.FullName ===
+package ru.practicum.comment;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication(scanBasePackages = {"ru.practicum.comment", "ru.practicum.client", "ru.practicum.exeption"})
+@EnableDiscoveryClient
+@EnableFeignClients(basePackages = {"ru.practicum.client"})
+public class CommentServiceApp {
+    public static void main(String[] args) {
+        SpringApplication.run(CommentServiceApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\src\main\resources\application.properties.FullName ===
+spring.application.name=comment-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\target\classes\application.properties.FullName ===
+spring.application.name=comment-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\comment-service\target\maven-archiver\pom.properties.FullName ===
+artifactId=comment-service
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\category\dto\CategoryDto.java.FullName ===
+package ru.practicum.category.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CategoryDto {
+    private Long id;
+    private String name;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\category\dto\NewCategoryDto.java.FullName ===
+package ru.practicum.category.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+@Getter
+@Setter
+public class NewCategoryDto {
+    @NotBlank
+    @Size(min = 1, max = 50)
+    private String name;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\comment\dto\CommentDto.java.FullName ===
+package ru.practicum.comment.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CommentDto {
+    private Long id;
+    private String text;
+    private Long eventId;
+    private String authorName;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime created;
+    private String status;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\comment\dto\CommentShortDto.java.FullName ===
+package ru.practicum.comment.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class CommentShortDto {
+    String userName;
+    String eventTitle;
+    String text;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    LocalDateTime created;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\comment\dto\NewCommentDto.java.FullName ===
+package ru.practicum.comment.dto;
+
+import lombok.*;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class NewCommentDto {
+    @NotBlank
+    @Size(min = 1, max = 2000)
+    private String text;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\comment\dto\UpdateCommentAdminRequest.java.FullName ===
+package ru.practicum.comment.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UpdateCommentAdminRequest {
+    private String status;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\compilation\dto\CompilationDto.java.FullName ===
+package ru.practicum.compilation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.event.dto.EventShortDto;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Getter
+@Setter
+public class CompilationDto {
+    private List<EventShortDto> events = new ArrayList<>();
+    private Long id;
+    private Boolean pinned;
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\compilation\dto\NewCompilationDto.java.FullName ===
+package ru.practicum.compilation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+@Getter
+@Setter
+public class NewCompilationDto {
+
+    private Set<@Positive(message = "РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рј") Long> events =
+            new LinkedHashSet<>();
+
+    private Boolean pinned = false;
+
+    @NotBlank(message = "Р—Р°РіРѕР»РѕРІРѕРє РїРѕРґР±РѕСЂРєРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
+    @Size(min = 1, max = 50, message = "Р—Р°РіРѕР»РѕРІРѕРє РїРѕРґР±РѕСЂРєРё РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 1 РґРѕ 50 СЃРёРјРІРѕР»РѕРІ")
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\compilation\dto\UpdateCompilationRequest.java.FullName ===
+package ru.practicum.compilation.dto;
+
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.Set;
+
+@Getter
+@Setter
+public class UpdateCompilationRequest {
+
+    private Set<@Positive(message = "РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рј") Long> events;
+
+    private Boolean pinned;
+
+    @Pattern(regexp = ".*\\S.*", message = "Р—Р°РіРѕР»РѕРІРѕРє РїРѕРґР±РѕСЂРєРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
+    @Size(min = 1, max = 50, message = "Р—Р°РіРѕР»РѕРІРѕРє РїРѕРґР±РѕСЂРєРё РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 1 РґРѕ 50 СЃРёРјРІРѕР»РѕРІ")
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\event\dto\EventFullDto.java.FullName ===
+package ru.practicum.event.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.event.model.Location;
+import ru.practicum.user.dto.UserShortDto;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+public class EventFullDto {
+    private Long id;
+    private String annotation;
+    private CategoryDto category;
+    private Long confirmedRequests;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdOn;
+    private String description;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventDate;
+    private UserShortDto initiator;
+    private Location location;
+    private Boolean paid;
+    private Integer participantLimit;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime publishedOn;
+    private Boolean requestModeration;
+    private String state;
+    private String title;
+    private Long views;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\event\dto\EventShortDto.java.FullName ===
+package ru.practicum.event.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.user.dto.UserShortDto;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+public class EventShortDto {
+    private Long id;
+    private String annotation;
+    private CategoryDto category;
+    private Long confirmedRequests;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventDate;
+    private UserShortDto initiator;
+    private Boolean paid;
+    private String title;
+    private Long views;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\event\model\Location.java.FullName ===
+package ru.practicum.event.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Location {
+    private Double lat;
+    private Double lon;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\exeption\BadRequestException.java.FullName ===
+package ru.practicum.exeption;
+
+public class BadRequestException extends RuntimeException {
+    public BadRequestException(String message) {
+        super(message);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\exeption\ConflictException.java.FullName ===
+package ru.practicum.exeption;
+
+public class ConflictException extends RuntimeException {
+    public ConflictException(String message) {
+        super(message);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\exeption\ErrorHandler.java.FullName ===
+package ru.practicum.exeption;
+
+import feign.FeignException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.Map;
+
+@RestControllerAdvice
+public class ErrorHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleNotFound(NotFoundException e) {
+        return Map.of(
+                "status", "NOT_FOUND",
+                "reason", "The required object was not found.",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+
+    @ExceptionHandler({BadRequestException.class, IllegalArgumentException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleBadRequest(RuntimeException e) {
+        return Map.of(
+                "status", "BAD_REQUEST",
+                "reason", "Incorrectly made request.",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleValidation(MethodArgumentNotValidException e) {
+        String message = e.getFieldError() != null
+                ? e.getFieldError().getDefaultMessage()
+                : "РћС€РёР±РєР° РІР°Р»РёРґР°С†РёРё";
+        return Map.of(
+                "status", "BAD_REQUEST",
+                "reason", "Incorrectly made request.",
+                "message", message,
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+
+    @ExceptionHandler({
+            MethodArgumentTypeMismatchException.class,
+            HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            DateTimeParseException.class
+    })
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleRequestParsing(Exception e) {
+        return Map.of(
+                "status", "BAD_REQUEST",
+                "reason", "Incorrectly made request.",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleConflict(ConflictException e) {
+        return Map.of(
+                "status", "CONFLICT",
+                "reason", "Integrity constraint has been violated.",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleDataIntegrity(DataIntegrityViolationException e) {
+        return Map.of(
+                "status", "CONFLICT",
+                "reason", "Integrity constraint has been violated.",
+                "message", e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : "РќР°СЂСѓС€РµРЅРёРµ С†РµР»РѕСЃС‚РЅРѕСЃС‚Рё РґР°РЅРЅС‹С…",
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<Map<String, String>> handleFeignException(FeignException e) {
+        HttpStatus status = HttpStatus.valueOf(e.status());
+        Map<String, String> body = Map.of(
+                "status", status.name(),
+                "reason", status == HttpStatus.CONFLICT ? "Integrity constraint has been violated." : "Internal server error.",
+                "message", e.contentUTF8(),
+                "timestamp", LocalDateTime.now().toString()
+        );
+        return new ResponseEntity<>(body, status);
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Map<String, String> handleGeneral(Exception e) {
+        return Map.of(
+                "status", "INTERNAL_SERVER_ERROR",
+                "reason", "Internal server error.",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        );
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\exeption\NotFoundException.java.FullName ===
+package ru.practicum.exeption;
+
+public class NotFoundException extends RuntimeException {
+    public NotFoundException(String message) {
+        super(message);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\request\dto\EventRequestStatusUpdateRequest.java.FullName ===
+package ru.practicum.request.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.List;
+
+@Getter
+@Setter
+public class EventRequestStatusUpdateRequest {
+    private List<Long> requestIds;
+    private String status;
+    private Long userId;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\request\dto\EventRequestStatusUpdateResult.java.FullName ===
+package ru.practicum.request.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class EventRequestStatusUpdateResult {
+    private List<ParticipationRequestDto> confirmedRequests;
+    private List<ParticipationRequestDto> rejectedRequests;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\request\dto\ParticipationRequestDto.java.FullName ===
+package ru.practicum.request.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+public class ParticipationRequestDto {
+    private Long id;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime created;
+
+    private Long event;
+    private Long requester;
+    private String status;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\request\model\RequestStatus.java.FullName ===
+package ru.practicum.request.model;
+
+public enum RequestStatus {
+    PENDING,
+    CONFIRMED,
+    REJECTED,
+    CANCELED
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\user\dto\NewUserRequest.java.FullName ===
+package ru.practicum.user.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class NewUserRequest {
+
+    @NotBlank(message = "РРјСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
+    @Size(min = 2, max = 250)
+    private String name;
+
+    @NotBlank(message = "Email РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
+    @Email(message = "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ email")
+    @Size(min = 6, max = 254)
+    private String email;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\user\dto\UserDto.java.FullName ===
+package ru.practicum.user.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UserDto {
+    private Long id;
+    private String name;
+    private String email;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\src\main\java\ru\practicum\user\dto\UserShortDto.java.FullName ===
+package ru.practicum.user.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UserShortDto {
+    private Long id;
+    private String name;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\common\target\maven-archiver\pom.properties.FullName ===
+artifactId=common
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\client\EventClient.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import ru.practicum.event.dto.EventShortDto;
+
+@FeignClient(name = "event-service", fallback = EventClientFallback.class)
+public interface EventClient {
+
+    @GetMapping("/internal/events/{eventId}/exists")
+    Boolean existsById(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/{eventId}/short")
+    EventShortDto getEventShort(@PathVariable Long eventId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\client\EventClientFallback.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.stereotype.Component;
+import ru.practicum.event.dto.EventShortDto;
+
+@Component
+public class EventClientFallback implements EventClient {
+
+    @Override
+    public Boolean existsById(Long eventId) {
+        return false;
+    }
+
+    @Override
+    public EventShortDto getEventShort(Long eventId) {
+        return null;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\compilation\controller\AdminCompilationController.java.FullName ===
+package ru.practicum.compilation.controller;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.compilation.dto.CompilationDto;
+import ru.practicum.compilation.dto.NewCompilationDto;
+import ru.practicum.compilation.dto.UpdateCompilationRequest;
+import ru.practicum.compilation.service.CompilationService;
+
+@RestController
+@RequestMapping("/admin/compilations")
+@RequiredArgsConstructor
+@Validated
+public class AdminCompilationController {
+
+    private final CompilationService compilationService;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CompilationDto create(@Valid @RequestBody NewCompilationDto dto) {
+        return compilationService.create(dto);
+    }
+
+    @DeleteMapping("/{compId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable @Positive(message = "РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕРґР±РѕСЂРєРё РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рј") Long compId) {
+        compilationService.delete(compId);
+    }
+
+    @PatchMapping("/{compId}")
+    public CompilationDto update(@PathVariable @Positive(message = "РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕРґР±РѕСЂРєРё РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рј") Long compId,
+                                 @Valid @RequestBody UpdateCompilationRequest dto) {
+        return compilationService.update(compId, dto);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\compilation\controller\PublicCompilationController.java.FullName ===
+package ru.practicum.compilation.controller;
+
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.compilation.dto.CompilationDto;
+import ru.practicum.compilation.service.CompilationService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/compilations")
+@RequiredArgsConstructor
+@Validated
+public class PublicCompilationController {
+
+    private final CompilationService compilationService;
+
+    @GetMapping
+    public List<CompilationDto> getCompilations(@RequestParam(required = false) Boolean pinned,
+                                                @RequestParam(defaultValue = "0") @PositiveOrZero(message = "РџР°СЂР°РјРµС‚СЂ from РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Рј") int from,
+                                                @RequestParam(defaultValue = "10") @Positive(message = "РџР°СЂР°РјРµС‚СЂ size РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0") int size) {
+        return compilationService.getCompilations(pinned, from, size);
+    }
+
+    @GetMapping("/{compId}")
+    public CompilationDto getCompilation(
+            @PathVariable @Positive(message = "РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕРґР±РѕСЂРєРё РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹Рј") Long compId) {
+        return compilationService.getCompilation(compId);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\compilation\mapper\CompilationMapper.java.FullName ===
+package ru.practicum.compilation.mapper;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import ru.practicum.compilation.dto.CompilationDto;
+import ru.practicum.compilation.model.Compilation;
+import ru.practicum.client.EventClient;
+
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class CompilationMapper {
+
+    private final EventClient eventClient;
+
+    public CompilationDto toDto(Compilation compilation) {
+        CompilationDto dto = new CompilationDto();
+        dto.setId(compilation.getId());
+        dto.setPinned(compilation.getPinned());
+        dto.setTitle(compilation.getTitle());
+        dto.setEvents(compilation.getEventIds().stream()
+                .map(eventClient::getEventShort)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()));
+        return dto;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\compilation\model\Compilation.java.FullName ===
+package ru.practicum.compilation.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+@Entity
+@Table(name = "compilations")
+@Getter
+@Setter
+@NoArgsConstructor
+public class Compilation {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ElementCollection
+    @CollectionTable(name = "compilation_events", joinColumns = @JoinColumn(name = "compilation_id"))
+    @Column(name = "event_id")
+    private Set<Long> eventIds = new LinkedHashSet<>();
+
+    @Column(nullable = false)
+    private Boolean pinned = false;
+
+    @Column(nullable = false, length = 50)
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\compilation\repository\CompilationRepository.java.FullName ===
+package ru.practicum.compilation.repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import ru.practicum.compilation.model.Compilation;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+public interface CompilationRepository extends JpaRepository<Compilation, Long> {
+
+    @Query("SELECT c.id FROM Compilation c WHERE (:pinned IS NULL OR c.pinned = :pinned)")
+    Page<Long> findIdsByPinned(@Param("pinned") Boolean pinned, Pageable pageable);
+
+    @Query("SELECT c FROM Compilation c WHERE c.id IN :ids")
+    List<Compilation> findAllDetailedByIdIn(@Param("ids") Collection<Long> ids);
+
+    @Query("SELECT c FROM Compilation c WHERE c.id = :compId")
+    Optional<Compilation> findDetailedById(@Param("compId") Long compId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\compilation\service\CompilationService.java.FullName ===
+package ru.practicum.compilation.service;
+
+import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.compilation.dto.CompilationDto;
+import ru.practicum.compilation.dto.NewCompilationDto;
+import ru.practicum.compilation.dto.UpdateCompilationRequest;
+import ru.practicum.compilation.mapper.CompilationMapper;
+import ru.practicum.compilation.model.Compilation;
+import ru.practicum.compilation.repository.CompilationRepository;
+import ru.practicum.client.EventClient;
+import ru.practicum.exeption.NotFoundException;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CompilationService {
+
+    private final CompilationRepository compilationRepository;
+    private final EventClient eventClient;
+    private final CompilationMapper compilationMapper;
+    private final EntityManager entityManager;
+
+    @Transactional
+    public CompilationDto create(NewCompilationDto dto) {
+        Compilation compilation = new Compilation();
+        compilation.setTitle(dto.getTitle());
+        compilation.setPinned(Boolean.TRUE.equals(dto.getPinned()));
+        compilation.setEventIds(dto.getEvents() != null ? new LinkedHashSet<>(dto.getEvents()) : new LinkedHashSet<>());
+
+        Compilation saved = compilationRepository.save(compilation);
+
+        return compilationMapper.toDto(saved);
+    }
+
+    @Transactional
+    public CompilationDto update(Long compId, UpdateCompilationRequest dto) {
+        Compilation compilation = compilationRepository.findById(compId)
+                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " was not found"));
+
+        if (dto.getEvents() != null) {
+            compilation.setEventIds(new LinkedHashSet<>(dto.getEvents()));
+        }
+        if (dto.getPinned() != null) {
+            compilation.setPinned(dto.getPinned());
+        }
+        if (dto.getTitle() != null) {
+            compilation.setTitle(dto.getTitle());
+        }
+
+        Compilation saved = compilationRepository.saveAndFlush(compilation);
+
+        return compilationMapper.toDto(saved);
+    }
+
+    @Transactional
+    public void delete(Long compId) {
+        if (!compilationRepository.existsById(compId)) {
+            throw new NotFoundException("Compilation with id=" + compId + " was not found");
+        }
+        compilationRepository.deleteById(compId);
+    }
+
+    public List<CompilationDto> getCompilations(Boolean pinned, int from, int size) {
+        List<Long> compilationIds = compilationRepository.findIdsByPinned(pinned, PageRequest.of(from / size, size))
+                .getContent();
+        if (compilationIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Integer> orderById = new LinkedHashMap<>();
+        for (int index = 0; index < compilationIds.size(); index++) {
+            orderById.put(compilationIds.get(index), index);
+        }
+
+        return compilationRepository.findAllDetailedByIdIn(compilationIds).stream()
+                .sorted(Comparator.comparingInt(c -> orderById.getOrDefault(c.getId(), Integer.MAX_VALUE)))
+                .map(compilationMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public CompilationDto getCompilation(Long compId) {
+        Compilation detailed = compilationRepository.findDetailedById(compId)
+                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " was not found"));
+        return compilationMapper.toDto(detailed);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\java\ru\practicum\CompilationServiceApp.java.FullName ===
+package ru.practicum;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication(scanBasePackages = {"ru.practicum.compilation", "ru.practicum.exeption"})
+@EnableDiscoveryClient
+@EnableFeignClients(basePackages = "ru.practicum.client")
+public class CompilationServiceApp {
+    public static void main(String[] args) {
+        SpringApplication.run(CompilationServiceApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\src\main\resources\application.properties.FullName ===
+spring.application.name=compilation-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\target\classes\application.properties.FullName ===
+spring.application.name=compilation-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\compilation-service\target\maven-archiver\pom.properties.FullName ===
+artifactId=compilation-service
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\category\CategoryClient.java.FullName ===
+package ru.practicum.category;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import ru.practicum.category.dto.CategoryDto;
+
+@FeignClient(name = "category-service", fallback = CategoryClientFallback.class)
+public interface CategoryClient {
+
+    @GetMapping("/internal/categories/{catId}")
+    CategoryDto getCategory(@PathVariable Long catId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\category\CategoryClientFallback.java.FullName ===
+package ru.practicum.category;
+
+import org.springframework.stereotype.Component;
+import ru.practicum.category.dto.CategoryDto;
+
+@Component
+public class CategoryClientFallback implements CategoryClient {
+
+    @Override
+    public CategoryDto getCategory(Long catId) {
+        return null;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\controller\AdminEventController.java.FullName ===
+package ru.practicum.event.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.event.dto.EventFullDto;
+import ru.practicum.event.dto.UpdateEventAdminRequest;
+import ru.practicum.event.enums.EventState;
+import ru.practicum.event.service.EventService;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/admin/events")
+@RequiredArgsConstructor
+public class AdminEventController {
+
+    private final EventService eventService;
+
+    @GetMapping
+    public List<EventFullDto> search(@RequestParam(required = false) List<Long> users,
+                                     @RequestParam(required = false) List<EventState> states,
+                                     @RequestParam(required = false) List<Long> categories,
+                                     @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
+                                     @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
+                                     @RequestParam(defaultValue = "0") int from,
+                                     @RequestParam(defaultValue = "10") int size) {
+        return eventService.searchAdmin(users, states, categories, rangeStart, rangeEnd, from, size);
+    }
+
+    @PatchMapping("/{eventId}")
+    public EventFullDto update(@PathVariable Long eventId,
+                               @Valid @RequestBody UpdateEventAdminRequest dto) {
+        return eventService.updateByAdmin(eventId, dto);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\controller\InternalEventController.java.FullName ===
+package ru.practicum.event.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.event.dto.EventShortDto;
+import ru.practicum.event.enums.EventState;
+import ru.practicum.event.mapper.EventMapper;
+import ru.practicum.event.model.Event;
+import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exeption.NotFoundException;
+
+@RestController
+@RequestMapping("/internal/events")
+@RequiredArgsConstructor
+public class InternalEventController {
+
+    private final EventRepository eventRepository;
+    private final EventMapper eventMapper;
+
+    @GetMapping("/{eventId}/exists")
+    public Boolean existsById(@PathVariable Long eventId) {
+        return eventRepository.existsById(eventId);
+    }
+
+    @GetMapping("/category/{categoryId}/exists")
+    public Boolean existsByCategoryId(@PathVariable Long categoryId) {
+        return eventRepository.existsByCategoryId(categoryId);
+    }
+
+    @GetMapping("/{eventId}/published")
+    public Boolean isPublished(@PathVariable Long eventId) {
+        return eventRepository.findById(eventId)
+                .map(event -> event.getState() == EventState.PUBLISHED)
+                .orElse(false);
+    }
+
+    @GetMapping("/{eventId}/initiator/{userId}")
+    public Boolean isInitiator(@PathVariable Long eventId, @PathVariable Long userId) {
+        return eventRepository.findById(eventId)
+                .map(event -> event.getInitiatorId().equals(userId))
+                .orElse(false);
+    }
+
+    @GetMapping("/{eventId}/participantLimit")
+    public Integer getParticipantLimit(@PathVariable Long eventId) {
+        return eventRepository.findById(eventId)
+                .map(event -> event.getParticipantLimit())
+                .orElse(null);
+    }
+
+    @GetMapping("/{eventId}/requestModeration")
+    public Boolean isRequestModeration(@PathVariable Long eventId) {
+        return eventRepository.findById(eventId)
+                .map(event -> event.getRequestModeration())
+                .orElse(null);
+    }
+
+    @GetMapping("/{eventId}/short")
+    public EventShortDto getEventShort(@PathVariable Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("РЎРѕР±С‹С‚РёРµ СЃ id=" + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ"));
+        return eventMapper.toShortDto(event, 0L, event.getViews());
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\controller\PrivateEventController.java.FullName ===
+package ru.practicum.event.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.event.dto.EventFullDto;
+import ru.practicum.event.dto.EventShortDto;
+import ru.practicum.event.dto.NewEventDto;
+import ru.practicum.event.dto.UpdateEventUserRequest;
+import ru.practicum.event.service.EventService;
+import ru.practicum.request.RequestClient;
+import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.request.dto.ParticipationRequestDto;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/users/{userId}/events")
+@RequiredArgsConstructor
+public class PrivateEventController {
+
+    private final EventService eventService;
+    private final RequestClient requestClient;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public EventFullDto create(@PathVariable Long userId,
+                               @Valid @RequestBody NewEventDto dto) {
+        return eventService.create(userId, dto);
+    }
+
+    @GetMapping
+    public List<EventShortDto> getByUser(@PathVariable Long userId,
+                                         @RequestParam(defaultValue = "0") int from,
+                                         @RequestParam(defaultValue = "10") int size) {
+        return eventService.getByUser(userId, from, size);
+    }
+
+    @GetMapping("/{eventId}")
+    public EventFullDto getByUserAndEvent(@PathVariable Long userId,
+                                          @PathVariable Long eventId) {
+        return eventService.getByUserAndEvent(userId, eventId);
+    }
+
+    @PatchMapping("/{eventId}")
+    public EventFullDto update(@PathVariable Long userId,
+                               @PathVariable Long eventId,
+                               @Valid @RequestBody UpdateEventUserRequest dto) {
+        return eventService.updateByUser(userId, eventId, dto);
+    }
+
+    @GetMapping("/{eventId}/requests")
+    public List<ParticipationRequestDto> getEventRequests(@PathVariable Long userId,
+                                                          @PathVariable Long eventId) {
+        return requestClient.getEventRequests(userId, eventId);
+    }
+
+    @PatchMapping("/{eventId}/requests")
+    public EventRequestStatusUpdateResult updateRequests(@PathVariable Long userId,
+                                                         @PathVariable Long eventId,
+                                                         @Valid @RequestBody EventRequestStatusUpdateRequest request) {
+
+        request.setUserId(userId);
+        return requestClient.updateRequestsStatus(eventId, request);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\controller\PublicEventController.java.FullName ===
+package ru.practicum.event.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.event.dto.EventFullDto;
+import ru.practicum.event.dto.EventShortDto;
+import ru.practicum.event.service.EventService;
+import ru.practicum.stats.client.StatsClient;
+import ru.practicum.stats.dto.EndpointHitDto;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/events")
+@RequiredArgsConstructor
+public class PublicEventController {
+
+    private final EventService eventService;
+    private final StatsClient statsClient;
+
+    @GetMapping
+    public List<EventShortDto> search(@RequestParam(required = false) String text,
+                                      @RequestParam(required = false) List<Long> categories,
+                                      @RequestParam(required = false) Boolean paid,
+                                      @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
+                                      @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
+                                      @RequestParam(defaultValue = "false") Boolean onlyAvailable,
+                                      @RequestParam(required = false) String sort,
+                                      @RequestParam(defaultValue = "0") int from,
+                                      @RequestParam(defaultValue = "10") int size,
+                                      HttpServletRequest request) {
+
+        statsClient.hit(new EndpointHitDto(
+                "ewm-main-service",
+                request.getRequestURI(),
+                request.getRemoteAddr(),
+                LocalDateTime.now()
+        ));
+
+        return eventService.searchPublic(text, categories, paid, rangeStart, rangeEnd,
+                onlyAvailable, sort, from, size);
+    }
+
+    @GetMapping("/{id}")
+    public EventFullDto get(@PathVariable Long id, HttpServletRequest request) {
+
+        statsClient.hit(new EndpointHitDto(
+                "ewm-main-service",
+                request.getRequestURI(),
+                request.getRemoteAddr(),
+                LocalDateTime.now()
+        ));
+
+        return eventService.getPublic(id);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\dto\NewEventDto.java.FullName ===
+package ru.practicum.event.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.*;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.event.model.Location;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+public class NewEventDto {
+
+    @NotBlank(message = "РђРЅРЅРѕС‚Р°С†РёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚РѕР№")
+    @Size(min = 20, max = 2000, message = "РђРЅРЅРѕС‚Р°С†РёСЏ РґРѕР»Р¶РЅР° СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 20 РґРѕ 2000 СЃРёРјРІРѕР»РѕРІ")
+    private String annotation;
+
+    @NotNull(message = "РљР°С‚РµРіРѕСЂРёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СѓРєР°Р·Р°РЅР°")
+    private Long category;
+
+    @NotBlank(message = "РћРїРёСЃР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
+    @Size(min = 20, max = 7000, message = "РћРїРёСЃР°РЅРёРµ РґРѕР»Р¶РЅРѕ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 20 РґРѕ 7000 СЃРёРјРІРѕР»РѕРІ")
+    private String description;
+
+    @NotNull(message = "Р”Р°С‚Р° СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СѓРєР°Р·Р°РЅР°")
+    @Future(message = "Р”Р°С‚Р° СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РІ Р±СѓРґСѓС‰РµРј")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventDate;
+
+    @NotNull(message = "Р›РѕРєР°С†РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СѓРєР°Р·Р°РЅР°")
+    private Location location;
+
+    private Boolean paid = false;
+
+    @PositiveOrZero(message = "Р›РёРјРёС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Рј")
+    private Integer participantLimit = 0;
+
+    private Boolean requestModeration = true;
+
+    @NotBlank(message = "Р—Р°РіРѕР»РѕРІРѕРє РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј")
+    @Size(min = 3, max = 120, message = "Р—Р°РіРѕР»РѕРІРѕРє РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ")
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\dto\UpdateEventAdminRequest.java.FullName ===
+package ru.practicum.event.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.event.model.Location;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+public class UpdateEventAdminRequest {
+
+    @Size(min = 20, max = 2000, message = "РђРЅРЅРѕС‚Р°С†РёСЏ РґРѕР»Р¶РЅР° СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 20 РґРѕ 2000 СЃРёРјРІРѕР»РѕРІ")
+    private String annotation;
+
+    private Long category;
+
+    @Size(min = 20, max = 7000, message = "РћРїРёСЃР°РЅРёРµ РґРѕР»Р¶РЅРѕ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 20 РґРѕ 7000 СЃРёРјРІРѕР»РѕРІ")
+    private String description;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventDate;
+
+    private Location location;
+
+    private Boolean paid;
+
+    @PositiveOrZero(message = "Р›РёРјРёС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Рј")
+    private Integer participantLimit;
+
+    private Boolean requestModeration;
+
+    private String stateAction;
+
+    @Size(min = 3, max = 120, message = "Р—Р°РіРѕР»РѕРІРѕРє РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ")
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\dto\UpdateEventUserRequest.java.FullName ===
+package ru.practicum.event.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.event.model.Location;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+public class UpdateEventUserRequest {
+
+    @Size(min = 20, max = 2000, message = "РђРЅРЅРѕС‚Р°С†РёСЏ РґРѕР»Р¶РЅР° СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 20 РґРѕ 2000 СЃРёРјРІРѕР»РѕРІ")
+    private String annotation;
+
+    private Long category;
+
+    @Size(min = 20, max = 7000, message = "РћРїРёСЃР°РЅРёРµ РґРѕР»Р¶РЅРѕ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 20 РґРѕ 7000 СЃРёРјРІРѕР»РѕРІ")
+    private String description;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventDate;
+
+    private Location location;
+
+    private Boolean paid;
+
+    @PositiveOrZero(message = "Р›РёРјРёС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Рј")
+    private Integer participantLimit;
+
+    private Boolean requestModeration;
+
+    private String stateAction;
+
+    @Size(min = 3, max = 120, message = "Р—Р°РіРѕР»РѕРІРѕРє РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ")
+    private String title;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\enums\EventState.java.FullName ===
+package ru.practicum.event.enums;
+
+public enum EventState {
+    PENDING,
+    PUBLISHED,
+    CANCELED
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\mapper\EventMapper.java.FullName ===
+package ru.practicum.event.mapper;
+
+import org.springframework.stereotype.Component;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.event.dto.EventFullDto;
+import ru.practicum.event.dto.EventShortDto;
+import ru.practicum.event.model.Event;
+import ru.practicum.user.dto.UserShortDto;
+
+@Component
+public class EventMapper {
+
+    public EventFullDto toFullDto(Event event, Long confirmedRequests, Long views) {
+        EventFullDto dto = new EventFullDto();
+        dto.setId(event.getId());
+        dto.setAnnotation(event.getAnnotation());
+        dto.setCategory(new CategoryDto() {{ setId(event.getCategoryId()); }});
+        dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0);
+        dto.setCreatedOn(event.getCreatedOn());
+        dto.setDescription(event.getDescription());
+        dto.setEventDate(event.getEventDate());
+        dto.setInitiator(new UserShortDto() {{ setId(event.getInitiatorId()); }});
+        dto.setLocation(event.getLocation());
+        dto.setPaid(event.getPaid());
+        dto.setParticipantLimit(event.getParticipantLimit());
+        dto.setPublishedOn(event.getPublishedOn());
+        dto.setRequestModeration(event.getRequestModeration());
+        dto.setState(event.getState().name());
+        dto.setTitle(event.getTitle());
+        dto.setViews(views != null ? views : 0);
+        return dto;
+    }
+
+    public EventShortDto toShortDto(Event event, Long confirmedRequests, Long views) {
+        EventShortDto dto = new EventShortDto();
+        dto.setId(event.getId());
+        dto.setAnnotation(event.getAnnotation());
+        dto.setCategory(new CategoryDto() {{ setId(event.getCategoryId()); }});
+        dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0);
+        dto.setEventDate(event.getEventDate());
+        dto.setInitiator(new UserShortDto() {{ setId(event.getInitiatorId()); }});
+        dto.setPaid(event.getPaid());
+        dto.setTitle(event.getTitle());
+        dto.setViews(views != null ? views : 0);
+        return dto;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\model\Event.java.FullName ===
+package ru.practicum.event.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import ru.practicum.event.enums.EventState;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "events")
+@Getter
+@Setter
+@NoArgsConstructor
+public class Event {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 2000)
+    private String annotation;
+
+    @Column(name = "category_id", nullable = false)
+    private Long categoryId;
+
+    @Transient
+    private Long confirmedRequests;
+
+    @Column(nullable = false)
+    private LocalDateTime createdOn;
+
+    @Column(nullable = false, length = 7000)
+    private String description;
+
+    @Column(nullable = false)
+    private LocalDateTime eventDate;
+
+    @Column(name = "initiator_id", nullable = false)
+    private Long initiatorId;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "lat", column = @Column(name = "location_lat")),
+            @AttributeOverride(name = "lon", column = @Column(name = "location_lon"))
+    })
+    private Location location;
+
+    @Column(nullable = false)
+    private Boolean paid;
+
+    @Column(nullable = false)
+    private Integer participantLimit;
+
+    private LocalDateTime publishedOn;
+
+    @Column(nullable = false)
+    private Boolean requestModeration;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EventState state;
+
+    @Column(nullable = false, length = 120)
+    private String title;
+
+    @Transient
+    private Long views;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\model\Location.java.FullName ===
+package ru.practicum.event.model;
+
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Location {
+    private Double lat;
+    private Double lon;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\repository\EventRepository.java.FullName ===
+package ru.practicum.event.repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import ru.practicum.event.enums.EventState;
+import ru.practicum.event.model.Event;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+public interface EventRepository extends JpaRepository<Event, Long> {
+
+    boolean existsByCategoryId(Long categoryId);
+
+    Page<Event> findByInitiatorId(Long initiatorId, Pageable pageable);
+
+    Optional<Event> findByIdAndInitiatorId(Long eventId, Long initiatorId);
+
+    @Query("SELECT e FROM Event e " +
+            "WHERE (:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%')) " +
+            "OR LOWER(e.description) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%'))) " +
+            "AND (:categories IS NULL OR e.categoryId IN :categories) " +
+            "AND (:paid IS NULL OR e.paid = :paid) " +
+            "AND (CAST(:rangeStart AS timestamp) IS NULL OR e.eventDate >= :rangeStart) " +
+            "AND (CAST(:rangeEnd AS timestamp) IS NULL OR e.eventDate <= :rangeEnd) " +
+            "AND e.state = 'PUBLISHED'")
+    Page<Event> searchPublic(@Param("text") String text,
+                             @Param("categories") List<Long> categories,
+                             @Param("paid") Boolean paid,
+                             @Param("rangeStart") LocalDateTime rangeStart,
+                             @Param("rangeEnd") LocalDateTime rangeEnd,
+                             Pageable pageable);
+
+    @Query("SELECT e FROM Event e " +
+            "WHERE (:users IS NULL OR e.initiatorId IN :users) " +
+            "AND (:states IS NULL OR e.state IN :states) " +
+            "AND (:categories IS NULL OR e.categoryId IN :categories) " +
+            "AND (CAST(:rangeStart AS timestamp) IS NULL OR e.eventDate >= :rangeStart) " +
+            "AND (CAST(:rangeEnd AS timestamp) IS NULL OR e.eventDate <= :rangeEnd)")
+    Page<Event> searchAdmin(@Param("users") List<Long> users,
+                            @Param("states") List<EventState> states,
+                            @Param("categories") List<Long> categories,
+                            @Param("rangeStart") LocalDateTime rangeStart,
+                            @Param("rangeEnd") LocalDateTime rangeEnd,
+                            Pageable pageable);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\service\EventService.java.FullName ===
+package ru.practicum.event.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.category.CategoryClient;
+import ru.practicum.category.dto.CategoryDto;
+import ru.practicum.event.dto.*;
+import ru.practicum.event.enums.EventState;
+import ru.practicum.event.mapper.EventMapper;
+import ru.practicum.event.model.Event;
+import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exeption.BadRequestException;
+import ru.practicum.exeption.ConflictException;
+import ru.practicum.exeption.NotFoundException;
+import ru.practicum.request.RequestClient;
+import ru.practicum.stats.client.StatsClient;
+import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.user.UserClient;
+import ru.practicum.user.dto.UserDto;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class EventService {
+
+    private final EventRepository eventRepository;
+    private final UserClient userClient;
+    private final CategoryClient categoryClient;
+    private final StatsClient statsClient;
+    private final RequestClient requestClient;
+    private final EventMapper eventMapper;
+
+    @Transactional
+    public EventFullDto create(Long userId, NewEventDto dto) {
+        if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new BadRequestException("Р”Р°С‚Р° СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµ СЂР°РЅРµРµ С‡РµРј С‡РµСЂРµР· 2 С‡Р°СЃР° РѕС‚ С‚РµРєСѓС‰РµРіРѕ РјРѕРјРµРЅС‚Р°");
+        }
+
+        UserDto initiator = userClient.getUser(userId);
+        if (initiator == null) {
+            throw new NotFoundException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ id=" + userId + " РЅРµ РЅР°Р№РґРµРЅ");
+        }
+
+        CategoryDto category = categoryClient.getCategory(dto.getCategory());
+        if (category == null) {
+            throw new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ СЃ id=" + dto.getCategory() + " РЅРµ РЅР°Р№РґРµРЅР°");
+        }
+
+        Event event = new Event();
+        event.setAnnotation(dto.getAnnotation());
+        event.setCategoryId(category.getId());
+        event.setDescription(dto.getDescription());
+        event.setEventDate(dto.getEventDate());
+        event.setLocation(dto.getLocation());
+        event.setPaid(dto.getPaid() != null ? dto.getPaid() : false);
+        event.setParticipantLimit(dto.getParticipantLimit() != null ? dto.getParticipantLimit() : 0);
+        event.setRequestModeration(dto.getRequestModeration() != null ? dto.getRequestModeration() : true);
+        event.setTitle(dto.getTitle());
+        event.setInitiatorId(userId);
+        event.setState(EventState.PENDING);
+        event.setCreatedOn(LocalDateTime.now());
+
+        Event saved = eventRepository.save(event);
+        return eventMapper.toFullDto(saved, 0L, 0L);
+    }
+
+    public List<EventShortDto> getByUser(Long userId, int from, int size) {
+        Pageable pageable = PageRequest.of(from / size, size);
+        return eventRepository.findByInitiatorId(userId, pageable)
+                .stream()
+                .map(event -> {
+                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+                    return eventMapper.toShortDto(event, confirmed, event.getViews());
+                })
+                .collect(Collectors.toList());
+    }
+
+    public EventFullDto getByUserAndEvent(Long userId, Long eventId) {
+        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
+                .orElseThrow(() -> new NotFoundException(
+                        "РЎРѕР±С‹С‚РёРµ СЃ id=" + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃ id=" + userId));
+        Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+        return eventMapper.toFullDto(event, confirmed, event.getViews());
+    }
+
+    @Transactional
+    public EventFullDto updateByUser(Long userId, Long eventId, UpdateEventUserRequest dto) {
+        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
+                .orElseThrow(() -> new NotFoundException(
+                        "РЎРѕР±С‹С‚РёРµ СЃ id=" + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ Сѓ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃ id=" + userId));
+
+        if (event.getState() != EventState.PENDING && event.getState() != EventState.CANCELED) {
+            throw new ConflictException("Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РѕС‚РјРµРЅС‘РЅРЅС‹Рµ РёР»Рё РѕР¶РёРґР°СЋС‰РёРµ РјРѕРґРµСЂР°С†РёСЋ СЃРѕР±С‹С‚РёСЏ");
+        }
+
+        if (dto.getAnnotation() != null) event.setAnnotation(dto.getAnnotation());
+        if (dto.getCategory() != null) {
+            CategoryDto category = categoryClient.getCategory(dto.getCategory());
+            if (category == null) {
+                throw new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ СЃ id=" + dto.getCategory() + " РЅРµ РЅР°Р№РґРµРЅР°");
+            }
+            event.setCategoryId(category.getId());
+        }
+        if (dto.getDescription() != null) event.setDescription(dto.getDescription());
+        if (dto.getEventDate() != null) {
+            if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+                throw new BadRequestException("Р”Р°С‚Р° СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµ СЂР°РЅРµРµ С‡РµРј С‡РµСЂРµР· 2 С‡Р°СЃР° РѕС‚ С‚РµРєСѓС‰РµРіРѕ РјРѕРјРµРЅС‚Р°");
+            }
+            event.setEventDate(dto.getEventDate());
+        }
+        if (dto.getLocation() != null) event.setLocation(dto.getLocation());
+        if (dto.getPaid() != null) event.setPaid(dto.getPaid());
+        if (dto.getParticipantLimit() != null) event.setParticipantLimit(dto.getParticipantLimit());
+        if (dto.getRequestModeration() != null) event.setRequestModeration(dto.getRequestModeration());
+        if (dto.getTitle() != null) event.setTitle(dto.getTitle());
+
+        if (dto.getStateAction() != null) {
+            if (dto.getStateAction().equals("SEND_TO_REVIEW")) {
+                event.setState(EventState.PENDING);
+            } else if (dto.getStateAction().equals("CANCEL_REVIEW")) {
+                event.setState(EventState.CANCELED);
+            }
+        }
+
+        Event saved = eventRepository.save(event);
+        Long confirmed = requestClient.countByEventIdAndStatus(saved.getId(), "CONFIRMED");
+        return eventMapper.toFullDto(saved, confirmed, saved.getViews());
+    }
+
+    public List<EventShortDto> searchPublic(String text, List<Long> categories, Boolean paid,
+                                            LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                            Boolean onlyAvailable, String sort, int from, int size) {
+
+        Pageable pageable = PageRequest.of(from / size, size);
+
+        if (rangeStart == null) rangeStart = LocalDateTime.now();
+        if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
+
+        if (rangeStart.isAfter(rangeEnd)) {
+            throw new BadRequestException("Р”Р°С‚Р° РЅР°С‡Р°Р»Р° РґРёР°РїР°Р·РѕРЅР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїРѕР·Р¶Рµ РґР°С‚С‹ РєРѕРЅС†Р°");
+        }
+
+        Page<Event> eventPage = eventRepository.searchPublic(text, categories, paid, rangeStart, rangeEnd, pageable);
+        List<Event> events = eventPage.getContent();
+        Map<Long, Long> viewsMap = getViewsMap(events);
+
+        return events.stream()
+                .map(event -> {
+                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    return eventMapper.toShortDto(event, confirmed, views);
+                })
+                .collect(Collectors.toList());
+    }
+
+    public EventFullDto getPublic(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("РЎРѕР±С‹С‚РёРµ СЃ id=" + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ"));
+
+        if (event.getState() != EventState.PUBLISHED) {
+            throw new NotFoundException("РЎРѕР±С‹С‚РёРµ СЃ id=" + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ");
+        }
+
+        Map<Long, Long> viewsMap = getViewsMap(List.of(event));
+        Long views = viewsMap.getOrDefault(event.getId(), 0L) + 1;
+
+        Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+        return eventMapper.toFullDto(event, confirmed, views);
+    }
+
+    public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
+                                          LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                          int from, int size) {
+        Pageable pageable = PageRequest.of(from / size, size);
+
+        if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
+        if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
+
+        List<Event> events = eventRepository.searchAdmin(users, states, categories, rangeStart, rangeEnd, pageable).getContent();
+        Map<Long, Long> viewsMap = getViewsMap(events);
+
+        return events.stream()
+                .map(event -> {
+                    Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    return eventMapper.toFullDto(event, confirmed, views);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public EventFullDto updateByAdmin(Long eventId, UpdateEventAdminRequest dto) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("РЎРѕР±С‹С‚РёРµ СЃ id=" + eventId + " РЅРµ РЅР°Р№РґРµРЅРѕ"));
+
+        if (dto.getAnnotation() != null) event.setAnnotation(dto.getAnnotation());
+        if (dto.getCategory() != null) {
+            CategoryDto category = categoryClient.getCategory(dto.getCategory());
+            if (category == null) {
+                throw new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ СЃ id=" + dto.getCategory() + " РЅРµ РЅР°Р№РґРµРЅР°");
+            }
+            event.setCategoryId(category.getId());
+        }
+        if (dto.getDescription() != null) event.setDescription(dto.getDescription());
+        if (dto.getEventDate() != null) {
+            if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
+                throw new BadRequestException("Р”Р°С‚Р° РЅР°С‡Р°Р»Р° СЃРѕР±С‹С‚РёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµ СЂР°РЅРµРµ С‡РµРј Р·Р° С‡Р°СЃ РѕС‚ РґР°С‚С‹ РїСѓР±Р»РёРєР°С†РёРё");
+            }
+            event.setEventDate(dto.getEventDate());
+        }
+        if (dto.getLocation() != null) event.setLocation(dto.getLocation());
+        if (dto.getPaid() != null) event.setPaid(dto.getPaid());
+        if (dto.getParticipantLimit() != null) event.setParticipantLimit(dto.getParticipantLimit());
+        if (dto.getRequestModeration() != null) event.setRequestModeration(dto.getRequestModeration());
+        if (dto.getTitle() != null) event.setTitle(dto.getTitle());
+
+        if (dto.getStateAction() != null) {
+            if (dto.getStateAction().equals("PUBLISH_EVENT")) {
+                if (event.getState() != EventState.PENDING) {
+                    throw new ConflictException("РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРѕР±С‹С‚РёРµ РІ СЃС‚Р°С‚СѓСЃРµ PENDING");
+                }
+                event.setState(EventState.PUBLISHED);
+                event.setPublishedOn(LocalDateTime.now());
+            } else if (dto.getStateAction().equals("REJECT_EVENT")) {
+                if (event.getState() == EventState.PUBLISHED) {
+                    throw new ConflictException("РќРµР»СЊР·СЏ РѕС‚РєР»РѕРЅРёС‚СЊ СѓР¶Рµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРµ СЃРѕР±С‹С‚РёРµ");
+                }
+                event.setState(EventState.CANCELED);
+            }
+        }
+
+        Event saved = eventRepository.save(event);
+        Long confirmed = requestClient.countByEventIdAndStatus(saved.getId(), "CONFIRMED");
+        return eventMapper.toFullDto(saved, confirmed, saved.getViews());
+    }
+
+    private Map<Long, Long> getViewsMap(List<Event> events) {
+        if (events.isEmpty()) return Map.of();
+
+        List<String> uris = events.stream()
+                .map(event -> "/events/" + event.getId())
+                .collect(Collectors.toList());
+
+        try {
+            List<ViewStatsDto> stats = statsClient.getStats(
+                    LocalDateTime.now().minusYears(10),
+                    LocalDateTime.now().plusYears(1),
+                    uris,
+                    true
+            );
+
+            return stats.stream()
+                    .collect(Collectors.toMap(
+                            dto -> {
+                                String uri = dto.getUri();
+                                return Long.parseLong(uri.substring(uri.lastIndexOf("/") + 1));
+                            },
+                            ViewStatsDto::getHits,
+                            (a, b) -> a > b ? a : b
+                    ));
+        } catch (Exception e) {
+            System.err.println("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїСЂРѕСЃРјРѕС‚СЂРѕРІ: " + e.getMessage());
+            return Map.of();
+        }
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\event\EventServiceApp.java.FullName ===
+package ru.practicum.event;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication(scanBasePackages = {"ru.practicum.event", "ru.practicum.stats", "ru.practicum.exeption"})
+@EnableDiscoveryClient
+@EnableFeignClients(basePackages = {"ru.practicum.category", "ru.practicum.user", "ru.practicum.request"})
+public class EventServiceApp {
+    public static void main(String[] args) {
+        SpringApplication.run(EventServiceApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\request\RequestClient.java.FullName ===
+package ru.practicum.request;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.request.dto.ParticipationRequestDto;
+
+import java.util.List;
+
+@FeignClient(name = "request-service", fallback = RequestClientFallback.class)
+public interface RequestClient {
+
+    @GetMapping("/internal/requests/event/{eventId}")
+    List<ParticipationRequestDto> getEventRequests(@RequestParam("userId") Long userId,
+                                                   @PathVariable Long eventId);
+
+    @PatchMapping("/internal/requests/event/{eventId}/status")
+    EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable Long eventId,
+                                                        @RequestBody EventRequestStatusUpdateRequest request);
+
+    @GetMapping("/internal/requests/event/{eventId}/count")
+    Long countByEventIdAndStatus(@PathVariable Long eventId, @RequestParam("status") String status);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\request\RequestClientFallback.java.FullName ===
+package ru.practicum.request;
+
+import org.springframework.stereotype.Component;
+import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.request.dto.ParticipationRequestDto;
+
+import java.util.Collections;
+import java.util.List;
+
+@Component
+public class RequestClientFallback implements RequestClient {
+
+    @Override
+    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public EventRequestStatusUpdateResult updateRequestsStatus(Long eventId,
+                                                               EventRequestStatusUpdateRequest request) {
+        return new EventRequestStatusUpdateResult(Collections.emptyList(), Collections.emptyList());
+    }
+
+    @Override
+    public Long countByEventIdAndStatus(Long eventId, String status) {
+        return 0L;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\user\UserClient.java.FullName ===
+package ru.practicum.user;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import ru.practicum.user.dto.UserDto;
+
+@FeignClient(name = "user-service", fallback = UserClientFallback.class)
+public interface UserClient {
+
+    @GetMapping("/internal/users/{userId}")
+    UserDto getUser(@PathVariable Long userId);
+
+    @GetMapping("/internal/users/{userId}/exists")
+    Boolean existsById(@PathVariable Long userId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\java\ru\practicum\user\UserClientFallback.java.FullName ===
+package ru.practicum.user;
+
+import org.springframework.stereotype.Component;
+import ru.practicum.user.dto.UserDto;
+
+@Component
+public class UserClientFallback implements UserClient {
+
+    @Override
+    public UserDto getUser(Long userId) {
+        return null;
+    }
+
+    @Override
+    public Boolean existsById(Long userId) {
+        return false;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\src\main\resources\application.properties.FullName ===
+spring.application.name=event-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\target\classes\application.properties.FullName ===
+spring.application.name=event-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\event-service\target\maven-archiver\pom.properties.FullName ===
+artifactId=event-service
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\client\EventClient.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+@FeignClient(name = "event-service", fallback = EventClientFallback.class)
+public interface EventClient {
+
+    @GetMapping("/internal/events/{eventId}/exists")
+    Boolean existsById(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/{eventId}/published")
+    Boolean isPublished(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/{eventId}/initiator/{userId}")
+    Boolean isInitiator(@PathVariable Long eventId, @PathVariable Long userId);
+
+    @GetMapping("/internal/events/{eventId}/participantLimit")
+    Integer getParticipantLimit(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/{eventId}/requestModeration")
+    Boolean isRequestModeration(@PathVariable Long eventId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\client\EventClientFallback.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class EventClientFallback implements EventClient {
+
+    @Override
+    public Boolean existsById(Long eventId) {
+        return false;
+    }
+
+    @Override
+    public Boolean isPublished(Long eventId) {
+        return false;
+    }
+
+    @Override
+    public Boolean isInitiator(Long eventId, Long userId) {
+        return false;
+    }
+
+    @Override
+    public Integer getParticipantLimit(Long eventId) {
+        return null;
+    }
+
+    @Override
+    public Boolean isRequestModeration(Long eventId) {
+        return null;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\client\UserClient.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+@FeignClient(name = "user-service", fallback = UserClientFallback.class)
+public interface UserClient {
+
+    @GetMapping("/internal/users/{userId}/exists")
+    Boolean existsById(@PathVariable Long userId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\client\UserClientFallback.java.FullName ===
+package ru.practicum.client;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class UserClientFallback implements UserClient {
+
+    @Override
+    public Boolean existsById(Long userId) {
+        return false;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\controller\InternalRequestController.java.FullName ===
+package ru.practicum.request.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.request.model.RequestStatus;
+import ru.practicum.request.repository.RequestRepository;
+import ru.practicum.request.service.RequestService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/internal/requests")
+@RequiredArgsConstructor
+public class InternalRequestController {
+
+    private final RequestService requestService;
+    private final RequestRepository requestRepository;
+
+    @GetMapping("/event/{eventId}")
+    public List<ParticipationRequestDto> getEventRequests(@RequestParam("userId") Long userId,
+                                                          @PathVariable Long eventId) {
+        return requestService.getEventRequests(userId, eventId);
+    }
+
+    @PatchMapping("/event/{eventId}/status")
+    public EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable Long eventId,
+                                                               @RequestBody EventRequestStatusUpdateRequest request) {
+        return requestService.updateRequestsStatus(request.getUserId(), eventId, request);
+    }
+
+    @GetMapping("/event/{eventId}/count")
+    public Long countByEventIdAndStatus(@PathVariable Long eventId, @RequestParam("status") String status) {
+        return requestRepository.countByEventIdAndStatus(eventId, RequestStatus.valueOf(status));
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\controller\PrivateRequestController.java.FullName ===
+package ru.practicum.request.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.request.service.RequestService;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/users/{userId}/requests")
+@RequiredArgsConstructor
+public class PrivateRequestController {
+
+    private final RequestService requestService;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ParticipationRequestDto create(@PathVariable Long userId,
+                                          @RequestParam Long eventId) {
+        return requestService.create(userId, eventId);
+    }
+
+    @GetMapping
+    public List<ParticipationRequestDto> getByUser(@PathVariable Long userId) {
+        return requestService.getByUser(userId);
+    }
+
+    @PatchMapping("/{requestId}/cancel")
+    public ParticipationRequestDto cancel(@PathVariable Long userId,
+                                          @PathVariable Long requestId) {
+        return requestService.cancel(userId, requestId);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\model\ParticipationRequest.java.FullName ===
+package ru.practicum.request.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "requests",
+        uniqueConstraints = @UniqueConstraint(name = "uq_request", columnNames = {"event_id", "requester_id"}))
+@Getter
+@Setter
+@NoArgsConstructor
+public class ParticipationRequest {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private LocalDateTime created;
+
+    @Column(name = "event_id", nullable = false)
+    private Long eventId;
+
+    @Column(name = "requester_id", nullable = false)
+    private Long requesterId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RequestStatus status;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\repository\RequestRepository.java.FullName ===
+package ru.practicum.request.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import ru.practicum.request.model.ParticipationRequest;
+import ru.practicum.request.model.RequestStatus;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface RequestRepository extends JpaRepository<ParticipationRequest, Long> {
+
+    List<ParticipationRequest> findByRequesterId(Long requesterId);
+
+    List<ParticipationRequest> findByEventId(Long eventId);
+
+    Optional<ParticipationRequest> findByIdAndRequesterId(Long requestId, Long requesterId);
+
+    boolean existsByEventIdAndRequesterId(Long eventId, Long requesterId);
+
+    long countByEventIdAndStatus(Long eventId, RequestStatus status);
+
+    @Query("SELECT r FROM ParticipationRequest r " +
+            "WHERE r.eventId = :eventId AND r.status = :status")
+    List<ParticipationRequest> findByEventIdAndStatus(@Param("eventId") Long eventId,
+                                                      @Param("status") RequestStatus status);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\service\RequestService.java.FullName ===
+package ru.practicum.request.service;
+
+import ru.practicum.request.dto.*;
+
+import java.util.List;
+
+public interface RequestService {
+
+    ParticipationRequestDto create(Long userId, Long eventId);
+
+    List<ParticipationRequestDto> getByUser(Long userId);
+
+    ParticipationRequestDto cancel(Long userId, Long requestId);
+
+    List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId);
+
+    EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId, EventRequestStatusUpdateRequest request);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\service\RequestServiceImpl.java.FullName ===
+package ru.practicum.request.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.client.EventClient;
+import ru.practicum.exeption.ConflictException;
+import ru.practicum.exeption.NotFoundException;
+import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.request.model.ParticipationRequest;
+import ru.practicum.request.model.RequestStatus;
+import ru.practicum.request.repository.RequestRepository;
+import ru.practicum.client.UserClient;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class RequestServiceImpl implements RequestService {
+
+    private final RequestRepository requestRepository;
+    private final UserClient userClient;
+    private final EventClient eventClient;
+
+    @Transactional
+    @Override
+    public ParticipationRequestDto create(Long userId, Long eventId) {
+        if (!userClient.existsById(userId)) {
+            throw new NotFoundException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ id=" + userId + " РЅРµ РЅР°Р№РґРµРЅ");
+        }
+        if (!eventClient.existsById(eventId)) {
+            throw new NotFoundException("РРІРµРЅС‚ СЃ id =" + eventId + " РЅРµ РЅР°Р№РґРµРЅ");
+        }
+        if (eventClient.isInitiator(eventId, userId)) {
+            throw new ConflictException("РРЅРёС†РёР°С‚РѕСЂ СЃРѕР±С‹С‚РёСЏ РЅРµ РјРѕР¶РµС‚ РґРѕР±Р°РІРёС‚СЊ Р·Р°РїСЂРѕСЃ РЅР° СѓС‡Р°СЃС‚РёРµ РІ СЃРІРѕС‘Рј СЃРѕР±С‹С‚РёРё");
+        }
+        if (!eventClient.isPublished(eventId)) {
+            throw new ConflictException("РќРµР»СЊР·СЏ СѓС‡Р°СЃС‚РІРѕРІР°С‚СЊ РІ РЅРµРѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРј СЃРѕР±С‹С‚РёРё");
+        }
+        if (requestRepository.existsByEventIdAndRequesterId(eventId, userId)) {
+            throw new ConflictException("РџРѕРІС‚РѕСЂРЅС‹Р№ Р·Р°РїСЂРѕСЃ РЅР° СѓС‡Р°СЃС‚РёРµ РЅРµРІРѕР·РјРѕР¶РµРЅ");
+        }
+
+        long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        Integer participantLimit = eventClient.getParticipantLimit(eventId);
+
+        if (participantLimit != null && participantLimit != 0 && confirmedCount >= participantLimit) {
+            throw new ConflictException("Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ");
+        }
+
+        ParticipationRequest request = new ParticipationRequest();
+        request.setRequesterId(userId);
+        request.setEventId(eventId);
+        request.setCreated(LocalDateTime.now());
+
+        if (participantLimit == null || participantLimit == 0 || !eventClient.isRequestModeration(eventId)) {
+            request.setStatus(RequestStatus.CONFIRMED);
+        } else {
+            request.setStatus(RequestStatus.PENDING);
+        }
+
+        return toDto(requestRepository.save(request));
+    }
+
+    @Override
+    public List<ParticipationRequestDto> getByUser(Long userId) {
+        return requestRepository.findByRequesterId(userId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    @Override
+    public ParticipationRequestDto cancel(Long userId, Long requestId) {
+        ParticipationRequest request = requestRepository.findByIdAndRequesterId(requestId, userId)
+                .orElseThrow(() -> new NotFoundException("Р—Р°РїСЂРѕСЃ СЃ id=" + requestId + " РЅРµ РЅР°Р№РґРµРЅ"));
+        request.setStatus(RequestStatus.CANCELED);
+        return toDto(requestRepository.save(request));
+    }
+
+    @Override
+    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        if (!eventClient.isInitiator(eventId, userId)) {
+            throw new ConflictException("РўРѕР»СЊРєРѕ РёРЅРёС†РёР°С‚РѕСЂ СЃРѕР±С‹С‚РёСЏ РјРѕР¶РµС‚ РїСЂРѕСЃРјР°С‚СЂРёРІР°С‚СЊ Р·Р°СЏРІРєРё");
+        }
+        return requestRepository.findByEventId(eventId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    @Override
+    public EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId,
+                                                               EventRequestStatusUpdateRequest updateRequest) {
+        if (!eventClient.isInitiator(eventId, userId)) {
+            throw new ConflictException("РўРѕР»СЊРєРѕ РёРЅРёС†РёР°С‚РѕСЂ СЃРѕР±С‹С‚РёСЏ РјРѕР¶РµС‚ РёР·РјРµРЅСЏС‚СЊ СЃС‚Р°С‚СѓСЃС‹ Р·Р°СЏРІРѕРє");
+        }
+
+        RequestStatus newStatus = RequestStatus.valueOf(updateRequest.getStatus().toUpperCase());
+        List<ParticipationRequest> requests = requestRepository.findAllById(updateRequest.getRequestIds());
+
+        if (requests.size() != updateRequest.getRequestIds().size()) {
+            throw new NotFoundException("РћРґРёРЅ РёР»Рё РЅРµСЃРєРѕР»СЊРєРѕ Р·Р°РїСЂРѕСЃРѕРІ РЅРµ РЅР°Р№РґРµРЅС‹");
+        }
+
+        for (ParticipationRequest r : requests) {
+            if (r.getStatus() != RequestStatus.PENDING) {
+                throw new ConflictException("РЎС‚Р°С‚СѓСЃ РјРѕР¶РЅРѕ РёР·РјРµРЅРёС‚СЊ С‚РѕР»СЊРєРѕ Сѓ Р·Р°СЏРІРѕРє РІ СЃРѕСЃС‚РѕСЏРЅРёРё PENDING");
+            }
+            if (!r.getEventId().equals(eventId)) {
+                throw new ConflictException("Р—Р°СЏРІРєР° РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє РґСЂСѓРіРѕРјСѓ СЃРѕР±С‹С‚РёСЋ");
+            }
+        }
+
+        List<ParticipationRequestDto> confirmed = new ArrayList<>();
+        List<ParticipationRequestDto> rejected = new ArrayList<>();
+
+        if (newStatus == RequestStatus.CONFIRMED) {
+            Integer limit = eventClient.getParticipantLimit(eventId);
+            int available = (limit == null || limit == 0) ? Integer.MAX_VALUE : limit - (int) requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+
+            if (available <= 0) {
+                throw new ConflictException("Р”РѕСЃС‚РёРіРЅСѓС‚ Р»РёРјРёС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ");
+            }
+
+            int toConfirm = Math.min(available, requests.size());
+            for (int i = 0; i < requests.size(); i++) {
+                ParticipationRequest req = requests.get(i);
+                if (i < toConfirm) {
+                    req.setStatus(RequestStatus.CONFIRMED);
+                    confirmed.add(toDto(req));
+                } else {
+                    req.setStatus(RequestStatus.REJECTED);
+                    rejected.add(toDto(req));
+                }
+            }
+        } else {
+            for (ParticipationRequest req : requests) {
+                req.setStatus(RequestStatus.REJECTED);
+                rejected.add(toDto(req));
+            }
+        }
+
+        requestRepository.saveAll(requests);
+        EventRequestStatusUpdateResult result = new EventRequestStatusUpdateResult();
+        result.setConfirmedRequests(confirmed);
+        result.setRejectedRequests(rejected);
+        return result;
+    }
+
+    private ParticipationRequestDto toDto(ParticipationRequest request) {
+        ParticipationRequestDto dto = new ParticipationRequestDto();
+        dto.setId(request.getId());
+        dto.setCreated(request.getCreated());
+        dto.setEvent(request.getEventId());
+        dto.setRequester(request.getRequesterId());
+        dto.setStatus(request.getStatus().name());
+        return dto;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\java\ru\practicum\request\RequestServiceApp.java.FullName ===
+package ru.practicum.request;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@SpringBootApplication(scanBasePackages = {"ru.practicum.request", "ru.practicum.client", "ru.practicum.client", "ru.practicum.exeption"})
+@EnableDiscoveryClient
+@EnableFeignClients(basePackages = {"ru.practicum.client", "ru.practicum.client"})
+public class RequestServiceApp {
+    public static void main(String[] args) {
+        SpringApplication.run(RequestServiceApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\src\main\resources\application.properties.FullName ===
+spring.application.name=request-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\target\classes\application.properties.FullName ===
+spring.application.name=request-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\request-service\target\maven-archiver\pom.properties.FullName ===
+artifactId=request-service
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\client\UserClient.java.FullName ===
+package ru.practicum.user.client;
+
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+@FeignClient(name = "user-service")
+public interface UserClient {
+
+    @GetMapping("/internal/users/{userId}/exists")
+    Boolean existsById(@PathVariable Long userId);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\controller\InternalUserController.java.FullName ===
+package ru.practicum.user.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.user.dto.UserDto;
+import ru.practicum.user.repository.UserRepository;
+
+@RestController
+@RequestMapping("/internal/users")
+@RequiredArgsConstructor
+public class InternalUserController {
+
+    private final UserRepository userRepository;
+
+    @GetMapping("/{userId}/exists")
+    public Boolean existsById(@PathVariable Long userId) {
+        return userRepository.existsById(userId);
+    }
+
+    @GetMapping("/{userId}/name")
+    public String getUserName(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> user.getName())
+                .orElse(null);
+    }
+
+    @GetMapping("/{userId}")
+    public UserDto getUser(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> {
+                    UserDto dto = new UserDto();
+                    dto.setId(user.getId());
+                    dto.setName(user.getName());
+                    dto.setEmail(user.getEmail());
+                    return dto;
+                })
+                .orElse(null);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\controller\UserController.java.FullName ===
+package ru.practicum.user.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.user.dto.NewUserRequest;
+import ru.practicum.user.dto.UserDto;
+import ru.practicum.user.repository.UserRepository;
+import ru.practicum.user.service.UserService;
+
+import java.util.List;
+
+@RestController
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+    private final UserRepository userRepository;
+
+    @PostMapping("/admin/users")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserDto create(@Valid @RequestBody NewUserRequest request) {
+        return userService.create(request);
+    }
+
+    @GetMapping("/admin/users")
+    public List<UserDto> getUsers(
+            @RequestParam(required = false) List<Long> ids,
+            @RequestParam(defaultValue = "0") int from,
+            @RequestParam(defaultValue = "10") int size) {
+        return userService.getUsers(ids, from, size);
+    }
+
+    @DeleteMapping("/admin/users/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long userId) {
+        userService.delete(userId);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\model\User.java.FullName ===
+package ru.practicum.user.model;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 250)
+    private String name;
+
+    @Column(nullable = false, length = 254, unique = true)
+    private String email;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\repository\UserRepository.java.FullName ===
+package ru.practicum.user.repository;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import ru.practicum.user.model.User;
+
+import java.util.List;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    List<User> findByIdIn(List<Long> ids, Pageable pageable);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\service\UserService.java.FullName ===
+package ru.practicum.user.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.exeption.NotFoundException;
+import ru.practicum.user.dto.NewUserRequest;
+import ru.practicum.user.dto.UserDto;
+import ru.practicum.user.model.User;
+import ru.practicum.user.repository.UserRepository;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    @Transactional
+    public UserDto create(NewUserRequest request) {
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        return toDto(userRepository.save(user));
+    }
+
+    public List<UserDto> getUsers(List<Long> ids, int from, int size) {
+        PageRequest page = PageRequest.of(from / size, size);
+        if (ids == null || ids.isEmpty()) {
+            return userRepository.findAll(page).stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+        }
+        return userRepository.findByIdIn(ids, page).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void delete(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ id=" + userId + " РЅРµ РЅР°Р№РґРµРЅ"));
+        userRepository.delete(user);
+    }
+
+    private UserDto toDto(User user) {
+        UserDto dto = new UserDto();
+        dto.setId(user.getId());
+        dto.setName(user.getName());
+        dto.setEmail(user.getEmail());
+        return dto;
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\java\ru\practicum\user\UserServiceApp.java.FullName ===
+package ru.practicum.user;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@SpringBootApplication(scanBasePackages = {"ru.practicum.user", "ru.practicum.exeption"})
+@EnableDiscoveryClient
+public class UserServiceApp {
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\src\main\resources\application.properties.FullName ===
+spring.application.name=user-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\target\classes\application.properties.FullName ===
+spring.application.name=user-service
+spring.config.import=configserver:
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\core\user-service\target\maven-archiver\pom.properties.FullName ===
+artifactId=user-service
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\java\ru\practicum\configserver\ConfigServerApp.java.FullName ===
+package ru.practicum.configserver;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.config.server.EnableConfigServer;
+
+@SpringBootApplication
+@EnableConfigServer
+public class ConfigServerApp {
+    public static void main(String[] args) {
+        SpringApplication.run(ConfigServerApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\category-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\comment-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\compilation-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\event-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.cloud.openfeign.client.config.default.connect-timeout=5000
+spring.cloud.openfeign.client.config.default.read-timeout=5000
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\request-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\stats-service.properties.FullName ===
+server.port=0
+
+spring.application.name=stats-service
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/stats}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql= true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+management.endpoints.web.exposure.include=health,info
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\config\user-service.properties.FullName ===
+server.port=0
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\src\main\resources\application.properties.FullName ===
+server.port=8888
+
+spring.application.name=config-server
+spring.profiles.active=native
+spring.cloud.config.server.native.search-locations=classpath:/config
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\category-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\comment-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\compilation-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\event-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.cloud.openfeign.client.config.default.connect-timeout=5000
+spring.cloud.openfeign.client.config.default.read-timeout=5000
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\request-service.properties.FullName ===
+server.port=0
+
+spring.cloud.openfeign.httpclient.hc5.enabled=true
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker.configs.default.sliding-window-size=10
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold=50
+resilience4j.circuitbreaker.configs.default.wait-duration-in-open-state=10000
+resilience4j.circuitbreaker.configs.default.permitted-number-of-calls-in-half-open-state=3
+
+resilience4j.retry.configs.default.max-attempts=3
+resilience4j.retry.configs.default.wait-duration=1000
+resilience4j.retry.configs.default.retry-exceptions[0]=java.io.IOException
+resilience4j.retry.configs.default.retry-exceptions[1]=java.net.ConnectException
+resilience4j.retry.configs.default.retry-exceptions[2]=java.util.concurrent.TimeoutException
+
+resilience4j.timelimiter.configs.default.timeout-duration=5s
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\stats-service.properties.FullName ===
+server.port=0
+
+spring.application.name=stats-service
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/stats}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql= true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+management.endpoints.web.exposure.include=health,info
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\config\user-service.properties.FullName ===
+server.port=0
+
+spring.datasource.driverClassName=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ewm}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.sql.init.mode=always
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\classes\application.properties.FullName ===
+server.port=8888
+
+spring.application.name=config-server
+spring.profiles.active=native
+spring.cloud.config.server.native.search-locations=classpath:/config
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\config-server\target\maven-archiver\pom.properties.FullName ===
+artifactId=config-server
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\discovery-server\src\main\java\ru\practicum\discovery\DiscoveryServerApp.java.FullName ===
+package ru.practicum.discovery;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+
+@SpringBootApplication
+@EnableEurekaServer
+public class DiscoveryServerApp {
+    public static void main(String[] args) {
+        SpringApplication.run(DiscoveryServerApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\discovery-server\src\main\resources\application.properties.FullName ===
+server.port=8761
+
+spring.application.name=discovery-server
+
+eureka.client.register-with-eureka=false
+eureka.client.fetch-registry=false
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.server.wait-time-in-ms-when-sync-empty=0
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\discovery-server\target\classes\application.properties.FullName ===
+server.port=8761
+
+spring.application.name=discovery-server
+
+eureka.client.register-with-eureka=false
+eureka.client.fetch-registry=false
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.server.wait-time-in-ms-when-sync-empty=0
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\discovery-server\target\maven-archiver\pom.properties.FullName ===
+artifactId=discovery-server
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\gateway-server\src\main\java\ru\practicum\gateway\GatewayServerApp.java.FullName ===
+package ru.practicum.gateway;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class GatewayServerApp {
+    public static void main(String[] args) {
+        SpringApplication.run(GatewayServerApp.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\gateway-server\src\main\resources\application.properties.FullName ===
+server.port=8080
+
+spring.application.name=gateway-server
+
+spring.cloud.gateway.discovery.locator.enabled=true
+spring.cloud.gateway.discovery.locator.lower-case-service-id=true
+
+spring.cloud.gateway.routes[0].id=event-service
+spring.cloud.gateway.routes[0].uri=lb://event-service
+spring.cloud.gateway.routes[0].predicates[0]=Path=/events/**, /events, /admin/events/**, /admin/events, /users/*/events/**, /users/*/events
+
+spring.cloud.gateway.routes[1].id=category-service
+spring.cloud.gateway.routes[1].uri=lb://category-service
+spring.cloud.gateway.routes[1].predicates[0]=Path=/categories/**, /categories, /admin/categories/**, /admin/categories
+
+spring.cloud.gateway.routes[2].id=user-service
+spring.cloud.gateway.routes[2].uri=lb://user-service
+spring.cloud.gateway.routes[2].predicates[0]=Path=/admin/users/**, /admin/users
+
+spring.cloud.gateway.routes[3].id=compilation-service
+spring.cloud.gateway.routes[3].uri=lb://compilation-service
+spring.cloud.gateway.routes[3].predicates[0]=Path=/compilations/**, /compilations, /admin/compilations/**, /admin/compilations
+
+spring.cloud.gateway.routes[4].id=comment-service
+spring.cloud.gateway.routes[4].uri=lb://comment-service
+spring.cloud.gateway.routes[4].predicates[0]=Path=/comments/**, /comments, /admin/comments/**, /admin/comments, /users/*/comments/**, /users/*/comments
+
+spring.cloud.gateway.routes[5].id=request-service
+spring.cloud.gateway.routes[5].uri=lb://request-service
+spring.cloud.gateway.routes[5].predicates[0]=Path=/users/*/requests/**, /users/*/requests, /users/*/events/*/requests/**, /users/*/events/*/requests
+
+#spring.cloud.gateway.routes[6].id=stats-service
+#spring.cloud.gateway.routes[6].uri=lb://stats-server
+#spring.cloud.gateway.routes[6].predicates[0]=Path=/hit, /stats
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+#management.endpoints.web.exposure.include=gateway,health,info
+#management.endpoint.gateway.enabled=true
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\gateway-server\target\classes\application.properties.FullName ===
+server.port=8080
+
+spring.application.name=gateway-server
+
+spring.cloud.gateway.discovery.locator.enabled=true
+spring.cloud.gateway.discovery.locator.lower-case-service-id=true
+
+spring.cloud.gateway.routes[0].id=event-service
+spring.cloud.gateway.routes[0].uri=lb://event-service
+spring.cloud.gateway.routes[0].predicates[0]=Path=/events/**, /events, /admin/events/**, /admin/events, /users/*/events/**, /users/*/events
+
+spring.cloud.gateway.routes[1].id=category-service
+spring.cloud.gateway.routes[1].uri=lb://category-service
+spring.cloud.gateway.routes[1].predicates[0]=Path=/categories/**, /categories, /admin/categories/**, /admin/categories
+
+spring.cloud.gateway.routes[2].id=user-service
+spring.cloud.gateway.routes[2].uri=lb://user-service
+spring.cloud.gateway.routes[2].predicates[0]=Path=/admin/users/**, /admin/users
+
+spring.cloud.gateway.routes[3].id=compilation-service
+spring.cloud.gateway.routes[3].uri=lb://compilation-service
+spring.cloud.gateway.routes[3].predicates[0]=Path=/compilations/**, /compilations, /admin/compilations/**, /admin/compilations
+
+spring.cloud.gateway.routes[4].id=comment-service
+spring.cloud.gateway.routes[4].uri=lb://comment-service
+spring.cloud.gateway.routes[4].predicates[0]=Path=/comments/**, /comments, /admin/comments/**, /admin/comments, /users/*/comments/**, /users/*/comments
+
+spring.cloud.gateway.routes[5].id=request-service
+spring.cloud.gateway.routes[5].uri=lb://request-service
+spring.cloud.gateway.routes[5].predicates[0]=Path=/users/*/requests/**, /users/*/requests, /users/*/events/*/requests/**, /users/*/events/*/requests
+
+#spring.cloud.gateway.routes[6].id=stats-service
+#spring.cloud.gateway.routes[6].uri=lb://stats-server
+#spring.cloud.gateway.routes[6].predicates[0]=Path=/hit, /stats
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+#management.endpoints.web.exposure.include=gateway,health,info
+#management.endpoint.gateway.enabled=true
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\infra\gateway-server\target\maven-archiver\pom.properties.FullName ===
+artifactId=gateway-server
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\client\src\main\java\ru\practicum\stats\client\StatsClient.java.FullName ===
+package ru.practicum.stats.client;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.dto.StatsConstants;
+import ru.practicum.stats.dto.ViewStatsDto;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Collections;
+
+@Slf4j
+@Service
+public class StatsClient {
+
+    private final RestTemplate restTemplate;
+    private final DiscoveryClient discoveryClient;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(StatsConstants.DATE_TIME_PATTERN);
+
+    public StatsClient(RestTemplate restTemplate, DiscoveryClient discoveryClient) {
+        this.restTemplate = restTemplate;
+        this.discoveryClient = discoveryClient;
+    }
+
+    private String getBaseUrl() {
+        return discoveryClient.getInstances("stats-server")
+                .stream()
+                .findFirst()
+                .map(instance -> "http://" + instance.getHost() + ":" + instance.getPort())
+                .orElse("http://localhost:9090");
+    }
+
+    public void hit(EndpointHitDto hitDto) {
+        try {
+            restTemplate.postForEntity(getBaseUrl() + "/hit", hitDto, Object.class);
+        } catch (Exception e) {
+            log.error("РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ hit: {}", e.getMessage());
+        }
+    }
+
+    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
+                                       List<String> uris, Boolean unique) {
+        try {
+//            String startEncoded = URLEncoder.encode(start.format(FORMATTER), StandardCharsets.UTF_8);
+//            String endEncoded = URLEncoder.encode(end.format(FORMATTER), StandardCharsets.UTF_8);
+
+//            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
+//                    .queryParam("start", startEncoded)
+//                    .queryParam("end", endEncoded);
+            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(getBaseUrl() + "/stats")
+                    .queryParam("start", start.format(FORMATTER))
+                    .queryParam("end", end.format(FORMATTER));
+
+            if (uris != null && !uris.isEmpty()) {
+                builder.queryParam("uris", uris);
+            }
+
+            if (unique != null) {
+                builder.queryParam("unique", unique);
+            }
+
+//            String url = builder.build(false).toUriString();
+            URI uri = builder.build().encode().toUri();
+
+            ResponseEntity<ViewStatsDto[]> response =
+                    restTemplate.getForEntity(uri, ViewStatsDto[].class);
+
+            return Arrays.asList(Objects.requireNonNull(response.getBody()));
+
+        } catch (Exception e) {
+            log.error("РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃС‚Р°С‚РёСЃС‚РёРєРё: start={}, end={}", start, end, e);
+            return Collections.emptyList();
+        }
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\client\src\main\java\ru\practicum\stats\client\StatsClientConfig.java.FullName ===
+package ru.practicum.stats.client;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+public class StatsClientConfig {
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\client\target\maven-archiver\pom.properties.FullName ===
+artifactId=client
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\controller\StatsController.java.FullName ===
+package ru.practicum.stats.controller;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.dto.StatsConstants;
+import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.stats.service.StatsService;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+public class StatsController {
+    private final StatsService statsService;
+
+    public StatsController(StatsService statsService) {
+        this.statsService = statsService;
+    }
+
+    @PostMapping("/hit")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void createHit(@RequestBody EndpointHitDto endpointHitDto) {
+        statsService.saveHit(endpointHitDto);
+    }
+
+    @GetMapping("/stats")
+    public List<ViewStatsDto> getStats(
+            @RequestParam(required = false) @DateTimeFormat(pattern = StatsConstants.DATE_TIME_PATTERN) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(pattern = StatsConstants.DATE_TIME_PATTERN) LocalDateTime end,
+            @RequestParam(required = false) List<String> uris,
+            @RequestParam(defaultValue = "false") boolean unique) {
+
+        return statsService.getStats(start, end, uris, unique);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\exception\ApiError.java.FullName ===
+package ru.practicum.stats.exception;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import ru.practicum.stats.dto.StatsConstants;
+
+import java.time.LocalDateTime;
+
+public record ApiError(
+        String status,
+        String reason,
+        String message,
+        @JsonFormat(pattern = StatsConstants.DATE_TIME_PATTERN) LocalDateTime timestamp
+) {
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\exception\BadRequestException.java.FullName ===
+package ru.practicum.stats.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public class BadRequestException extends RuntimeException {
+    public BadRequestException(String message) {
+        super(message);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\exception\ErrorHandler.java.FullName ===
+package ru.practicum.stats.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.LocalDateTime;
+
+@RestControllerAdvice
+public class ErrorHandler {
+
+//    @ExceptionHandler(Exception.class)
+//    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+//    public ApiError handleGeneralError(Exception exception) {
+//        return new ApiError(
+//                HttpStatus.INTERNAL_SERVER_ERROR.name(),
+//                "Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РѕС€РёР±РєР° СЃРµСЂРІРµСЂР°.",
+//                exception.getMessage(),
+//                LocalDateTime.now());
+//    }
+
+    @ExceptionHandler(Throwable.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiError handleGeneralError(Throwable e) {
+        return new ApiError("INTERNAL_SERVER_ERROR", "РџСЂРѕРёР·РѕС€Р»Р° РЅРµРїСЂРµРґРІРёРґРµРЅРЅР°СЏ РѕС€РёР±РєР°", e.getMessage(), LocalDateTime.now());
+    }
+
+    @ExceptionHandler({
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class
+    })
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleParamErrors(Exception e) {
+        return new ApiError("BAD_REQUEST", "РћС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ РёР»Рё РЅРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹", e.getMessage(), LocalDateTime.now());
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\exception\InvalidDateRangeException.java.FullName ===
+package ru.practicum.stats.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public class InvalidDateRangeException extends BadRequestException {
+    public InvalidDateRangeException(String message) {
+        super(message);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\model\EndpointHit.java.FullName ===
+package ru.practicum.stats.model;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+@Entity
+@Table(name = "hits")
+public class EndpointHit {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "app", nullable = false)
+    private String app;
+
+    @Column(name = "uri", nullable = false)
+    private String uri;
+
+    @Column(name = "ip", nullable = false)
+    private String ip;
+
+    @Column(name = "timestamp", nullable = false)
+    private LocalDateTime timestamp;
+
+    protected EndpointHit() {
+    }
+
+    public EndpointHit(Long id, String app, String uri, String ip, LocalDateTime timestamp) {
+        this.id = id;
+        this.app = app;
+        this.uri = uri;
+        this.ip = ip;
+        this.timestamp = timestamp;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getApp() {
+        return app;
+    }
+
+    public String getUri() {
+        return uri;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof EndpointHit)) return false;
+        EndpointHit that = (EndpointHit) o;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "EndpointHit{"
+                + "id=" + id
+                + ", app='" + app + '\''
+                + ", uri='" + uri + '\''
+                + ", ip='" + ip + '\''
+                + ", timestamp=" + timestamp
+                + '}';
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\repository\HitRepository.java.FullName ===
+package ru.practicum.stats.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.stats.model.EndpointHit;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public interface HitRepository extends JpaRepository<EndpointHit, Long> {
+    @Query("select new ru.practicum.stats.dto.ViewStatsDto(h.app, h.uri, count(distinct h.ip)) " +
+            "from EndpointHit h " +
+            "where h.timestamp between :start and :end and h.uri in :uris " +
+            "group by h.app, h.uri " +
+            "order by count(distinct h.ip) desc")
+    List<ViewStatsDto> findStatsByUrisWithUniqueIp(@Param("start") LocalDateTime start,
+                                                   @Param("end") LocalDateTime end,
+                                                   @Param("uris") List<String> uris);
+
+    @Query("select new ru.practicum.stats.dto.ViewStatsDto(h.app, h.uri, count(h.id)) " +
+            "from EndpointHit h " +
+            "where h.timestamp between :start and :end and h.uri in :uris " +
+            "group by h.app, h.uri " +
+            "order by count(h.id) desc")
+    List<ViewStatsDto> findStatsByUris(@Param("start") LocalDateTime start,
+                                       @Param("end") LocalDateTime end,
+                                       @Param("uris") List<String> uris);
+
+    @Query("select new ru.practicum.stats.dto.ViewStatsDto(h.app, h.uri, count(distinct h.ip)) " +
+            "from EndpointHit h " +
+            "where h.timestamp between :start and :end " +
+            "group by h.app, h.uri " +
+            "order by count(distinct h.ip) desc")
+    List<ViewStatsDto> findAllStatsWithUniqueIp(@Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end);
+
+    @Query("select new ru.practicum.stats.dto.ViewStatsDto(h.app, h.uri, count(h.id)) " +
+            "from EndpointHit h " +
+            "where h.timestamp between :start and :end " +
+            "group by h.app, h.uri " +
+            "order by count(h.id) desc")
+    List<ViewStatsDto> findAllStats(@Param("start") LocalDateTime start,
+                                    @Param("end") LocalDateTime end);
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\stats\service\StatsService.java.FullName ===
+package ru.practicum.stats.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.stats.exception.BadRequestException;
+import ru.practicum.stats.exception.InvalidDateRangeException;
+import ru.practicum.stats.model.EndpointHit;
+import ru.practicum.stats.repository.HitRepository;
+
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+
+@Service
+public class StatsService {
+    private final HitRepository hitRepository;
+
+    public StatsService(HitRepository hitRepository) {
+        this.hitRepository = hitRepository;
+    }
+
+    @Transactional
+    public void saveHit(EndpointHitDto endpointHitDto) {
+        validateHit(endpointHitDto);
+        hitRepository.save(new EndpointHit(
+                null,
+                endpointHitDto.getApp(),
+                endpointHitDto.getUri(),
+                endpointHitDto.getIp(),
+                endpointHitDto.getTimestamp()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
+        validateDateRange(start, end);
+        List<String> normalizedUris = normalizeUris(uris);
+        if (normalizedUris.isEmpty()) {
+            return unique
+                    ? hitRepository.findAllStatsWithUniqueIp(start, end)
+                    : hitRepository.findAllStats(start, end);
+        }
+        return unique
+                ? hitRepository.findStatsByUrisWithUniqueIp(start, end, normalizedUris)
+                : hitRepository.findStatsByUris(start, end, normalizedUris);
+    }
+
+    private void validateHit(EndpointHitDto endpointHitDto) {
+        if (endpointHitDto == null) {
+            throw new BadRequestException("РўРµР»Рѕ Р·Р°РїСЂРѕСЃР° РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ СѓРєР°Р·Р°РЅРѕ.");
+        }
+        if (!StringUtils.hasText(endpointHitDto.getApp())) {
+            throw new BadRequestException("РџРѕР»Рµ app РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+        }
+        if (!StringUtils.hasText(endpointHitDto.getUri())) {
+            throw new BadRequestException("РџРѕР»Рµ uri РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+        }
+        if (!StringUtils.hasText(endpointHitDto.getIp())) {
+            throw new BadRequestException("РџРѕР»Рµ ip РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+        }
+        if (endpointHitDto.getTimestamp() == null) {
+            throw new BadRequestException("РџРѕР»Рµ timestamp РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ СѓРєР°Р·Р°РЅРѕ.");
+        }
+    }
+
+    private void validateDateRange(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) {
+            throw new BadRequestException("РџР°СЂР°РјРµС‚СЂС‹ start Рё end РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ СѓРєР°Р·Р°РЅС‹.");
+        }
+        if (start.isAfter(end)) {
+            throw new InvalidDateRangeException(String.format(
+                    "Р”Р°С‚Р° РЅР°С‡Р°Р»Р° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СЂР°РЅСЊС€Рµ РёР»Рё СЂР°РІРЅР° РґР°С‚Рµ РѕРєРѕРЅС‡Р°РЅРёСЏ. start=%s, end=%s",
+                    start,
+                    end));
+        }
+    }
+
+    private List<String> normalizeUris(List<String> uris) {
+        if (uris == null) {
+            return Collections.emptyList();
+        }
+        return uris.stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\java\ru\practicum\StatsServer.java.FullName ===
+package ru.practicum;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@SpringBootApplication
+@EnableDiscoveryClient
+public class StatsServer {
+    public static void main(String[] args) {
+        SpringApplication.run(StatsServer.class, args);
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\resources\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=false
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\main\resources\application.properties.FullName ===
+spring.application.name=stats-server
+server.port=${SERVER_PORT:0}
+spring.config.import=configserver:
+
+#server.port=${SERVER_PORT:0}
+#spring.application.name=stats-server
+#spring.cloud.config.enabled=true
+#
+#spring.datasource.driverClassName=org.postgresql.Driver
+#
+#spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://stats-db:5432/stats}
+#spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+#spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+#spring.jpa.hibernate.ddl-auto=update
+#spring.datasource.hikari.connection-timeout=10000
+#spring.datasource.hikari.initialization-fail-timeout=10000
+#
+#spring.jpa.show-sql=true
+#spring.jpa.properties.hibernate.format_sql=true
+#
+#spring.sql.init.mode=always
+#
+#management.endpoints.web.exposure.include=health,info
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\test\java\ru\practicum\MyServiceTests.java.FullName ===
+package ru.practicum;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.model.EndpointHit;
+import ru.practicum.stats.repository.HitRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class MyServiceTests {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private HitRepository hitRepository;
+
+    @BeforeEach
+    void setUp() {
+        hitRepository.deleteAll();
+    }
+
+    @Test
+    void shouldCreateHit() throws Exception {
+        EndpointHitDto endpointHitDto = new EndpointHitDto(
+                "ewm-main-service",
+                "/events/1",
+                "192.168.0.1",
+                LocalDateTime.of(2022, 9, 6, 11, 0, 23));
+
+        mockMvc.perform(post("/hit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(endpointHitDto)))
+                .andExpect(status().isCreated());
+
+        List<EndpointHit> hits = hitRepository.findAll();
+        assertThat(hits).hasSize(1);
+        EndpointHit savedHit = hits.get(0);
+        assertThat(savedHit.getApp()).isEqualTo("ewm-main-service");
+        assertThat(savedHit.getUri()).isEqualTo("/events/1");
+        assertThat(savedHit.getIp()).isEqualTo("192.168.0.1");
+        assertThat(savedHit.getTimestamp()).isEqualTo(LocalDateTime.of(2022, 9, 6, 11, 0, 23));
+    }
+
+    @Test
+    void shouldReturnStatsForAllQueryModes() throws Exception {
+        hitRepository.saveAll(List.of(
+                new EndpointHit(null, "ewm-main-service", "/events/1", "192.168.0.1",
+                        LocalDateTime.of(2022, 9, 6, 10, 0, 0)),
+                new EndpointHit(null, "ewm-main-service", "/events/1", "192.168.0.1",
+                        LocalDateTime.of(2022, 9, 6, 10, 5, 0)),
+                new EndpointHit(null, "ewm-main-service", "/events/1", "192.168.0.2",
+                        LocalDateTime.of(2022, 9, 6, 10, 10, 0)),
+                new EndpointHit(null, "ewm-main-service", "/events/2", "192.168.0.3",
+                        LocalDateTime.of(2022, 9, 6, 10, 15, 0))));
+
+        mockMvc.perform(get("/stats")
+                        .param("start", "2022-09-06 09:00:00")
+                        .param("end", "2022-09-06 11:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].app").value("ewm-main-service"))
+                .andExpect(jsonPath("$[0].uri").value("/events/1"))
+                .andExpect(jsonPath("$[0].hits").value(3))
+                .andExpect(jsonPath("$[1].uri").value("/events/2"))
+                .andExpect(jsonPath("$[1].hits").value(1));
+
+        mockMvc.perform(get("/stats")
+                        .param("start", "2022-09-06 09:00:00")
+                        .param("end", "2022-09-06 11:00:00")
+                        .param("unique", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].uri").value("/events/1"))
+                .andExpect(jsonPath("$[0].hits").value(2))
+                .andExpect(jsonPath("$[1].uri").value("/events/2"))
+                .andExpect(jsonPath("$[1].hits").value(1));
+
+        mockMvc.perform(get("/stats")
+                        .param("start", "2022-09-06 09:00:00")
+                        .param("end", "2022-09-06 11:00:00")
+                        .param("uris", "/events/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].uri").value("/events/1"))
+                .andExpect(jsonPath("$[0].hits").value(3))
+                .andExpect(jsonPath("$.length()").value(1));
+
+        mockMvc.perform(get("/stats")
+                        .param("start", "2022-09-06 09:00:00")
+                        .param("end", "2022-09-06 11:00:00")
+                        .param("uris", "/events/1")
+                        .param("unique", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].uri").value("/events/1"))
+                .andExpect(jsonPath("$[0].hits").value(2))
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenStartIsAfterEnd() throws Exception {
+        mockMvc.perform(get("/stats")
+                        .param("start", "2022-09-06 12:00:00")
+                        .param("end", "2022-09-06 11:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.reason").value("РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ Р·Р°РїСЂРѕСЃ."))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString(
+                        "Р”Р°С‚Р° РЅР°С‡Р°Р»Р° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СЂР°РЅСЊС€Рµ РёР»Рё СЂР°РІРЅР° РґР°С‚Рµ РѕРєРѕРЅС‡Р°РЅРёСЏ")));
+    }
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\src\test\resources\application-test.properties.FullName ===
+spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=none
+spring.sql.init.mode=always
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\target\classes\application-boot.properties.FullName ===
+spring.cloud.config.discovery.enabled=false
+spring.cloud.config.discovery.service-id=config-server
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\target\classes\application.properties.FullName ===
+spring.application.name=stats-server
+server.port=${SERVER_PORT:0}
+spring.config.import=configserver:
+
+#server.port=${SERVER_PORT:0}
+#spring.application.name=stats-server
+#spring.cloud.config.enabled=true
+#
+#spring.datasource.driverClassName=org.postgresql.Driver
+#
+#spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://stats-db:5432/stats}
+#spring.datasource.username=${SPRING_DATASOURCE_USERNAME:practicum}
+#spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:practicum}
+
+#spring.jpa.hibernate.ddl-auto=update
+#spring.datasource.hikari.connection-timeout=10000
+#spring.datasource.hikari.initialization-fail-timeout=10000
+#
+#spring.jpa.show-sql=true
+#spring.jpa.properties.hibernate.format_sql=true
+#
+#spring.sql.init.mode=always
+#
+#management.endpoints.web.exposure.include=health,info
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\target\maven-archiver\pom.properties.FullName ===
+artifactId=stats-server
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\target\test-classes\application-test.properties.FullName ===
+spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=none
+spring.sql.init.mode=always
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\server\Dockerfile.FullName ===
+FROM amazoncorretto:21-alpine-jdk
+COPY stats-service/server/target/server-*.jar app.jar
+ENTRYPOINT ["java","-jar","/app.jar"]
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\stats-dto\src\main\java\ru\practicum\stats\dto\EndpointHitDto.java.FullName ===
+package ru.practicum.stats.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class EndpointHitDto {
+
+    @NotBlank
+    private String app;
+
+    @NotBlank
+    private String uri;
+
+    @NotBlank
+    private String ip;
+
+    @NotNull
+    @JsonFormat(pattern = StatsConstants.DATE_TIME_PATTERN)
+    private LocalDateTime timestamp;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\stats-dto\src\main\java\ru\practicum\stats\dto\StatsConstants.java.FullName ===
+package ru.practicum.stats.dto;
+
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
+public class StatsConstants {
+    public static final String DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss";
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\stats-dto\src\main\java\ru\practicum\stats\dto\ViewStatsDto.java.FullName ===
+package ru.practicum.stats.dto;
+
+import lombok.*;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ViewStatsDto {
+    private String app;
+    private String uri;
+    private Long hits;
+}
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\stats-service\stats-dto\target\maven-archiver\pom.properties.FullName ===
+artifactId=stats-dto
+groupId=ru.practicum
+version=0.0.1-SNAPSHOT
+
+
+=== D:\JavaProjects\JavaCore\java-plus-graduation\docker-compose.yml.FullName ===
+services:
+  stats-server:
+    ports:
+      - "9090:9090"
+
+  stats-db:
+    image: postgres:16.1
+
+  main-service:
+    image: main-service
+
+  main-db:
+    image: postgres:16.1
+
+  gateway-server:
+    ports:
+      - "8080:8080"
+
+
