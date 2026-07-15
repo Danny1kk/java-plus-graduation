@@ -25,10 +25,9 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
+            <artifactId>grpc-netty</artifactId>
             <version>1.62.2</version>
         </dependency>
         <dependency>
