@@ -3,9 +3,7 @@ package ru.practicum.category.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.category.dto.CategoryDto;
-import ru.practicum.category.model.Category;
 import ru.practicum.category.service.CategoryService;
-import ru.practicum.exeption.NotFoundException;
 
 import java.util.List;
 

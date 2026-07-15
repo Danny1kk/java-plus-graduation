@@ -1,7 +1,6 @@
 package ru.practicum.client;
 
 import org.springframework.stereotype.Component;
-import ru.practicum.event.dto.EventShortDto;
 
 @Component
 public class EventClientFallback implements EventClient {

@@ -22,6 +22,4 @@ public interface EventClient {
     @GetMapping("/internal/events/{eventId}/requestModeration")
     Boolean isRequestModeration(@PathVariable Long eventId);
 
-//    @GetMapping("/internal/events/category/{categoryId}/exists")
-//    Boolean existsByCategoryId(@PathVariable("categoryId") Long categoryId);
 }
