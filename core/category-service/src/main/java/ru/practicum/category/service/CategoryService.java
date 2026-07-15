@@ -57,7 +57,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
 
-        if (eventClient.isPublished(catId)) {
+        if (eventClient.existsByCategoryId(catId)) {
             throw new ConflictException("Категория не является пустой");
         }
 

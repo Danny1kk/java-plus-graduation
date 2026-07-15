@@ -12,4 +12,7 @@ public interface EventClient {
 
     @GetMapping("/internal/events/{eventId}/published")
     Boolean isPublished(@PathVariable Long eventId);
+
+    @GetMapping("/internal/events/category/{categoryId}/exists")
+    Boolean existsByCategoryId(@PathVariable("categoryId") Long categoryId);
 }
