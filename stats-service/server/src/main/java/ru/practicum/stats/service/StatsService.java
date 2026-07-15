@@ -22,33 +22,52 @@ public class StatsService {
         this.hitRepository = hitRepository;
     }
 
-    @Transactional
-    public void saveHit(EndpointHitDto endpointHitDto) {
-        validateHit(endpointHitDto);
-        hitRepository.save(new EndpointHit(
-                null,
-                endpointHitDto.app(),
-                endpointHitDto.uri(),
-                endpointHitDto.ip(),
-                endpointHitDto.timestamp()));
-    }
+//    @Transactional
+//    public void saveHit(EndpointHitDto endpointHitDto) {
+//        validateHit(endpointHitDto);
+//        hitRepository.save(new EndpointHit(
+//                null,
+//                endpointHitDto.app(),
+//                endpointHitDto.uri(),
+//                endpointHitDto.ip(),
+//                endpointHitDto.timestamp()));
+//    }
+//
+//    @Transactional(readOnly = true)
+//    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
+//
+//        LocalDateTime actualStart = (start != null) ? start : LocalDateTime.now().minusYears(100);
+//        LocalDateTime actualEnd = (end != null) ? end : LocalDateTime.now();
+//
+//        validateDateRange(actualStart, actualEnd);
+//        List<String> normalizedUris = normalizeUris(uris);
+//        if (normalizedUris.isEmpty()) {
+//            return unique
+//                    ? hitRepository.findAllStatsWithUniqueIp(start, end)
+//                    : hitRepository.findAllStats(start, end);
+//        }
+//        return unique
+//                ? hitRepository.findStatsByUrisWithUniqueIp(start, end, normalizedUris)
+//                : hitRepository.findStatsByUris(start, end, normalizedUris);
+//    }
 
     @Transactional(readOnly = true)
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
-
         LocalDateTime actualStart = (start != null) ? start : LocalDateTime.now().minusYears(100);
         LocalDateTime actualEnd = (end != null) ? end : LocalDateTime.now();
 
         validateDateRange(actualStart, actualEnd);
+
         List<String> normalizedUris = normalizeUris(uris);
+
         if (normalizedUris.isEmpty()) {
             return unique
-                    ? hitRepository.findAllStatsWithUniqueIp(start, end)
-                    : hitRepository.findAllStats(start, end);
+                    ? hitRepository.findAllStatsWithUniqueIp(actualStart, actualEnd)
+                    : hitRepository.findAllStats(actualStart, actualEnd);
         }
         return unique
-                ? hitRepository.findStatsByUrisWithUniqueIp(start, end, normalizedUris)
-                : hitRepository.findStatsByUris(start, end, normalizedUris);
+                ? hitRepository.findStatsByUrisWithUniqueIp(actualStart, actualEnd, normalizedUris)
+                : hitRepository.findStatsByUris(actualStart, actualEnd, normalizedUris);
     }
 
     private void validateHit(EndpointHitDto endpointHitDto) {

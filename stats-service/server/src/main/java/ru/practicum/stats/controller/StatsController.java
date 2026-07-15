@@ -36,9 +36,9 @@ public class StatsController {
             @RequestParam(required = false) List<String> uris,
             @RequestParam(defaultValue = "false") boolean unique) {
 
-        if (start != null && end != null && start.isAfter(end)) {
-            throw new BadRequestException("Дата начала не может быть позже даты конца");
-        }
+//        if (start != null && end != null && start.isAfter(end)) {
+//            throw new BadRequestException("Дата начала не может быть позже даты конца");
+//        }
 
         return statsService.getStats(start, end, uris, unique);
     }
