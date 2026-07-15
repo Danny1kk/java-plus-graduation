@@ -16,6 +16,7 @@ import java.util.List;
 
 @Service
 public class StatsService {
+
     private final HitRepository hitRepository;
 
     public StatsService(HitRepository hitRepository) {
