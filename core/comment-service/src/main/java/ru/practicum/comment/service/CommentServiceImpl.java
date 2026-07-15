@@ -170,8 +170,14 @@ public class CommentServiceImpl implements CommentService {
         return LocalDateTime.parse(dateStr, FORMATTER);
     }
 
+//    private void validateDateRange(LocalDateTime start, LocalDateTime end) {
+//        if (start != null && end != null && start.isAfter(end)) {
+//            throw new BadRequestException("Дата начала диапазона не может быть позже даты конца.");
+//        }
+//    }
+
     private void validateDateRange(LocalDateTime start, LocalDateTime end) {
-        if (start != null && end != null && start.isAfter(end)) {
+        if (start == null && end == null && start.isAfter(end)) {
             throw new BadRequestException("Дата начала диапазона не может быть позже даты конца.");
         }
     }
