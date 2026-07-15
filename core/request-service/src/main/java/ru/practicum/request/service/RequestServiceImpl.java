@@ -91,6 +91,11 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+
+        if (!eventClient.existsById(eventId)) {
+            throw new NotFoundException("Ивент не найден");
+        }
+
         if (!eventClient.isInitiator(eventId, userId)) {
             throw new ConflictException("Только инициатор события может просматривать заявки");
         }
@@ -103,6 +108,11 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId,
                                                                EventRequestStatusUpdateRequest updateRequest) {
+
+        if (!eventClient.existsById(eventId)) {
+            throw new NotFoundException("Ивент не найден");
+        }
+
         if (!eventClient.isInitiator(eventId, userId)) {
             throw new ConflictException("Только инициатор события может изменять статусы заявок");
         }
