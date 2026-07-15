@@ -35,7 +35,11 @@ public class StatsService {
 
     @Transactional(readOnly = true)
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
-        validateDateRange(start, end);
+
+        LocalDateTime actualStart = (start != null) ? start : LocalDateTime.now().minusYears(100);
+        LocalDateTime actualEnd = (end != null) ? end : LocalDateTime.now();
+
+        validateDateRange(actualStart, actualEnd);
         List<String> normalizedUris = normalizeUris(uris);
         if (normalizedUris.isEmpty()) {
             return unique

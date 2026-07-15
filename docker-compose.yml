@@ -15,3 +15,128 @@ services:
   gateway-server:
     ports:
       - "8080:8080"
+
+#services:
+#  stats-server:
+#    ports:
+#      - "9090:9090"
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://stats-db:5432/stats
+#    depends_on:
+#      - stats-db
+#
+#  stats-db:
+#    image: postgres:16.1
+#    environment:
+#      POSTGRES_DB: stats
+#      POSTGRES_USER: practicum
+#      POSTGRES_PASSWORD: practicum
+#    ports:
+#      - "5432:5432"
+#    volumes:
+#      - stats-db-data:/var/lib/postgresql/data
+#
+#  main-service:
+#    image: main-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#
+#  main-db:
+#    image: postgres:16.1
+#    environment:
+#      POSTGRES_DB: ewm
+#      POSTGRES_USER: practicum
+#      POSTGRES_PASSWORD: practicum
+#    ports:
+#      - "5433:5432"
+#    volumes:
+#      - main-db-data:/var/lib/postgresql/data
+#
+#  gateway-server:
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#
+#  discovery-server:
+#    build: infra/discovery-server
+#    ports:
+#      - "8761:8761"
+#    environment:
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#
+#  config-server:
+#    build: infra/config-server
+#    ports:
+#      - "8888:8888"
+#    environment:
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#
+#  category-service:
+#    build: core/category-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#      - config-server
+#      - main-db
+#
+#  comment-service:
+#    build: core/comment-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#      - config-server
+#      - main-db
+#
+#  compilation-service:
+#    build: core/compilation-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#      - config-server
+#      - main-db
+#
+#  event-service:
+#    build: core/event-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#      - config-server
+#      - main-db
+#
+#  request-service:
+#    build: core/request-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#      - config-server
+#      - main-db
+#
+#  user-service:
+#    build: core/user-service
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://main-db:5432/ewm
+#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+#    depends_on:
+#      - discovery-server
+#      - config-server
+#      - main-db
+#
+#volumes:
+#  stats-db-data:
+#  main-db-data:
