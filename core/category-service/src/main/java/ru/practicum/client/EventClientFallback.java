@@ -1,6 +1,7 @@
 package ru.practicum.client;
 
 import org.springframework.stereotype.Component;
+import ru.practicum.event.dto.EventShortDto;
 
 @Component
 public class EventClientFallback implements EventClient {
@@ -12,6 +13,11 @@ public class EventClientFallback implements EventClient {
 
     @Override
     public Boolean isPublished(Long eventId) {
+        return false;
+    }
+
+    @Override
+    public Boolean existsByCategoryId(Long categoryId) {
         return false;
     }
 }
