@@ -10,7 +10,7 @@ import ru.practicum.user.dto.UserShortDto;
 @Component
 public class EventMapper {
 
-    public EventFullDto toFullDto(Event event, Long confirmedRequests, Long views) {
+    public EventFullDto toFullDto(Event event, Long confirmedRequests, Double rating) {
         EventFullDto dto = new EventFullDto();
         dto.setId(event.getId());
         dto.setAnnotation(event.getAnnotation());
@@ -27,11 +27,11 @@ public class EventMapper {
         dto.setRequestModeration(event.getRequestModeration());
         dto.setState(event.getState().name());
         dto.setTitle(event.getTitle());
-        dto.setViews(views != null ? views : 0);
+        dto.setRating(rating != null ? rating : 0.0);
         return dto;
     }
 
-    public EventShortDto toShortDto(Event event, Long confirmedRequests, Long views) {
+    public EventShortDto toShortDto(Event event, Long confirmedRequests, Double rating) {
         EventShortDto dto = new EventShortDto();
         dto.setId(event.getId());
         dto.setAnnotation(event.getAnnotation());
@@ -41,7 +41,7 @@ public class EventMapper {
         dto.setInitiator(new UserShortDto() {{ setId(event.getInitiatorId()); }});
         dto.setPaid(event.getPaid());
         dto.setTitle(event.getTitle());
-        dto.setViews(views != null ? views : 0);
+        dto.setRating(rating != null ? rating : 0.0);
         return dto;
     }
 }

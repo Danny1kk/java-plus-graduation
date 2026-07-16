@@ -1,9 +1,11 @@
 package ru.practicum.request.service;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.client.EventClient;
+import ru.practicum.ewm.stats.proto.ActionTypeProto;
 import ru.practicum.exeption.ConflictException;
 import ru.practicum.exeption.NotFoundException;
 import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
@@ -13,12 +15,14 @@ import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.model.RequestStatus;
 import ru.practicum.request.repository.RequestRepository;
 import ru.practicum.client.UserClient;
+import ru.practicum.stats.client.CollectorClient;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,6 +31,7 @@ public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final UserClient userClient;
     private final EventClient eventClient;
+    private final CollectorClient collectorClient;
 
     @Transactional
     @Override
@@ -65,7 +70,13 @@ public class RequestServiceImpl implements RequestService {
             request.setStatus(RequestStatus.PENDING);
         }
 
-        return toDto(requestRepository.save(request));
+        ParticipationRequest saved = requestRepository.save(request);
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+        } catch (Exception e) {
+            log.error("Не удалось отправить уведомление о регистрации сборщику данных для userId={}, eventId={}", userId, eventId, e);
+        }
+        return toDto(saved);
     }
 
     @Override

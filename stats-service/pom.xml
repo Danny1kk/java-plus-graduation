@@ -18,6 +18,11 @@
         <module>stats-dto</module>
         <module>client</module>
         <module>server</module>
+        <module>proto</module>
+        <module>collector</module>
+        <module>avro</module>
+        <module>analyzer</module>
+        <module>aggregator</module>
     </modules>
 
     <properties>
@@ -40,5 +45,29 @@
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>1.68.1</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-bom</artifactId>
+                <version>3.25.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-netty-shaded</artifactId>
+                <version>1.68.1</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

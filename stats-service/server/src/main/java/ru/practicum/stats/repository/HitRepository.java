@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface HitRepository extends JpaRepository<EndpointHit, Long> {
+
     @Query("select new ru.practicum.stats.dto.ViewStatsDto(h.app, h.uri, count(distinct h.ip)) " +
             "from EndpointHit h " +
             "where h.timestamp between :start and :end and h.uri in :uris " +
