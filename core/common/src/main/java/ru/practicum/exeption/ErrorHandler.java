@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import java.time.format.DateTimeFormatter;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -20,8 +19,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class ErrorHandler {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> handleNotFound(NotFoundException e) {
@@ -29,7 +26,7 @@ public class ErrorHandler {
                 "status", "NOT_FOUND",
                 "reason", "The required object was not found.",
                 "message", e.getMessage(),
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 
@@ -40,7 +37,7 @@ public class ErrorHandler {
                 "status", "BAD_REQUEST",
                 "reason", "Incorrectly made request.",
                 "message", e.getMessage(),
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 
@@ -54,7 +51,7 @@ public class ErrorHandler {
                 "status", "BAD_REQUEST",
                 "reason", "Incorrectly made request.",
                 "message", message,
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 
@@ -70,7 +67,7 @@ public class ErrorHandler {
                 "status", "BAD_REQUEST",
                 "reason", "Incorrectly made request.",
                 "message", e.getMessage(),
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 
@@ -81,7 +78,7 @@ public class ErrorHandler {
                 "status", "CONFLICT",
                 "reason", "Integrity constraint has been violated.",
                 "message", e.getMessage(),
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 
@@ -92,7 +89,7 @@ public class ErrorHandler {
                 "status", "CONFLICT",
                 "reason", "Integrity constraint has been violated.",
                 "message", e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : "Нарушение целостности данных",
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 
@@ -103,7 +100,7 @@ public class ErrorHandler {
                 "status", status.name(),
                 "reason", status == HttpStatus.CONFLICT ? "Integrity constraint has been violated." : "Internal server error.",
                 "message", e.contentUTF8(),
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
         return new ResponseEntity<>(body, status);
     }
@@ -115,7 +112,7 @@ public class ErrorHandler {
                 "status", "INTERNAL_SERVER_ERROR",
                 "reason", "Internal server error.",
                 "message", e.getMessage(),
-                "timestamp", LocalDateTime.now().format(FORMATTER)
+                "timestamp", LocalDateTime.now().toString()
         );
     }
 }

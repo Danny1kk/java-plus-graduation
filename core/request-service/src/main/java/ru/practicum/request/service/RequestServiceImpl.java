@@ -1,5 +1,6 @@
 package ru.practicum.request.service;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -69,7 +71,11 @@ public class RequestServiceImpl implements RequestService {
         }
 
         ParticipationRequest saved = requestRepository.save(request);
-        collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+        } catch (Exception e) {
+            log.error("Не удалось отправить уведомление о регистрации сборщику данных для userId={}, eventId={}", userId, eventId, e);
+        }
         return toDto(saved);
     }
 
@@ -91,11 +97,6 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
-
-        if (!eventClient.existsById(eventId)) {
-            throw new NotFoundException("Ивент не найден");
-        }
-
         if (!eventClient.isInitiator(eventId, userId)) {
             throw new ConflictException("Только инициатор события может просматривать заявки");
         }
@@ -108,11 +109,6 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId,
                                                                EventRequestStatusUpdateRequest updateRequest) {
-
-        if (!eventClient.existsById(eventId)) {
-            throw new NotFoundException("Ивент не найден");
-        }
-
         if (!eventClient.isInitiator(eventId, userId)) {
             throw new ConflictException("Только инициатор события может изменять статусы заявок");
         }

@@ -142,18 +142,13 @@ public class EventService {
     public List<EventShortDto> searchPublic(String text, List<Long> categories, Boolean paid,
                                             LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                             Boolean onlyAvailable, String sort, int from, int size) {
+        Pageable pageable = PageRequest.of(from / size, size);
 
-        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-            throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
-        }
         if (rangeStart == null) rangeStart = LocalDateTime.now();
         if (rangeEnd == null) rangeEnd = LocalDateTime.now().plusYears(100);
 
-        Pageable pageable;
-        if ("EVENT_DATE".equals(sort)) {
-            pageable = PageRequest.of(from / size, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "eventDate"));
-        } else {
-            pageable = PageRequest.of(from / size, size);
+        if (rangeStart.isAfter(rangeEnd)) {
+            throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
         }
 
         Page<Event> eventPage = eventRepository.searchPublic(text, categories, paid, rangeStart, rangeEnd, pageable);
@@ -166,27 +161,13 @@ public class EventService {
         List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         Map<Long, Double> ratings = getRatingsFromAnalyzer(eventIds);
 
-        java.util.stream.Stream<EventShortDto> stream = events.stream()
+        return events.stream()
                 .map(event -> {
                     Long confirmed = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
                     Double rating = ratings.getOrDefault(event.getId(), 0.0);
                     return eventMapper.toShortDto(event, confirmed, rating);
-                });
-
-        if (Boolean.TRUE.equals(onlyAvailable)) {
-            stream = stream.filter(dto -> {
-                Event event = eventRepository.findById(dto.getId()).orElse(null);
-                return event != null && (event.getParticipantLimit() == 0 || dto.getConfirmedRequests() < event.getParticipantLimit());
-            });
-        }
-
-        List<EventShortDto> result = stream.collect(Collectors.toList());
-
-        if ("VIEWS".equals(sort) || "RATING".equals(sort)) {
-            result.sort(java.util.Comparator.comparing(EventShortDto::getRating).reversed());
-        }
-
-        return result;
+                })
+                .collect(Collectors.toList());
     }
 
     public EventFullDto getPublic(Long eventId) {
@@ -232,11 +213,6 @@ public class EventService {
     public List<EventFullDto> searchAdmin(List<Long> users, List<EventState> states, List<Long> categories,
                                           LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                           int from, int size) {
-
-        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-            throw new BadRequestException("Дата начала диапазона не может быть позже даты конца");
-        }
-
         Pageable pageable = PageRequest.of(from / size, size);
 
         if (rangeStart == null) rangeStart = LocalDateTime.now().minusYears(100);
@@ -282,11 +258,6 @@ public class EventService {
                 if (event.getState() != EventState.PENDING) {
                     throw new ConflictException("Опубликовать можно только событие в статусе PENDING");
                 }
-
-                if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-                    throw new ConflictException("Дата начала события должна быть не ранее чем за час от даты публикации.");
-                }
-
                 event.setState(EventState.PUBLISHED);
                 event.setPublishedOn(LocalDateTime.now());
             } else if (dto.getStateAction().equals("REJECT_EVENT")) {

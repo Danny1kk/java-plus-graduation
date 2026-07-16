@@ -38,7 +38,11 @@ public class PublicEventController {
     public EventFullDto get(@PathVariable Long id, HttpServletRequest request) {
         String userIdHeader = request.getHeader("X-EWM-USER-ID");
         if (userIdHeader != null) {
-            collectorClient.sendUserAction(Long.parseLong(userIdHeader), id, ActionTypeProto.ACTION_VIEW);
+            try {
+                collectorClient.sendUserAction(Long.parseLong(userIdHeader), id, ActionTypeProto.ACTION_VIEW);
+            } catch (Exception e) {
+                log.error("Не удалось отправить действие просмотра для userId={}, eventId={}", userIdHeader, id, e);
+            }
         }
         return eventService.getPublic(id);
     }
@@ -85,6 +89,10 @@ public class PublicEventController {
             throw new BadRequestException("Пользователь может лайкать только мероприятия, на которые он подтвердил участие");
         }
 
-        collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE);
+        try {
+            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE);
+        } catch (Exception e) {
+            log.error("Не удалось отправить аналогичное действие для userId={}, eventId={}", userId, eventId, e);
+        }
     }
 }
